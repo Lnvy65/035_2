@@ -12,7 +12,7 @@ npm run dev (프론트에서)
 <details>
     <summary>최경욱</summary>
     
-    최경욱 - mainPage 추가 버튼 활성화 / cell클릭시 수정창 팝업 만들기 / 우측 하단 알림 관리자일시 알림글 추가 가능한 버튼? 만들기 
+    mainPage 추가 버튼 활성화 / cell클릭시 수정창 팝업 만들기 / 우측 하단 알림 관리자일시 알림글 추가 가능한 버튼? 만들기 
 </details>
 <details>
     <summary>류준상</summary>
