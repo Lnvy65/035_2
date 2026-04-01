@@ -1,5 +1,11 @@
 # 035
 
+db조작시 dbeaver 필요
+035-backend, 035-frontend 에서 따로 터미널 열고
+npm start (백엔드에서)
+npm run dev (프론트에서)
+입력후 사용가능
+
 ## 추가적인 아이디어
 > [!NOTE] 
 > 추가적인 아이디어가 있을경우 이곳에 입력하기
