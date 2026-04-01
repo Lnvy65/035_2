@@ -1,0 +1,38 @@
+/* 전체 컨테이너 */
+.appContainer {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #fff;
+}
+
+/* 헤더를 제외한 나머지 영역 (사이드바 + 메인) */
+.bodyWrapper {
+  display: flex;
+  flex: 1;
+  position: relative;
+}
+
+.mainContent {
+  flex: 1;
+  background-color: #fff;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 20px;
+  flex: 1;
+}
+
+/* 사이드바 너비만큼 왼쪽 마진을 주어 '밀어내는' 효과 */
+.expanded {
+  margin-left: 280px;
+}
+
+.collapsed {
+  margin-left: 68px; /* 축소되었을 때 아이콘 너비만큼만 마진 */
+}
+
+.contentArea {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

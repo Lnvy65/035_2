@@ -1,0 +1,168 @@
+/* Dashboard.module.css */
+
+.container {
+  padding: 40px;
+  background-color: #f9fafb;
+  min-height: 100vh;
+  font-family: sans-serif;
+}
+
+/* 1. 상단 타이틀 구역 */
+.header {
+  margin-bottom: 40px;
+  padding-left: 8px;
+}
+
+.titlePlaceholder {
+  width: 280px;
+  height: 32px;
+  background-color: #e5e7eb;
+  margin-bottom: 8px;
+  border-radius: 6px;
+}
+
+.subtitlePlaceholder {
+  width: 180px;
+  height: 18px;
+  background-color: #f3f4f6;
+  border-radius: 4px;
+}
+
+/* 공통 카드 스타일 (shadowCardStyle 대체) */
+.card {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  padding: 24px;
+}
+
+/* 2. 상단 요약 카드 섹션 */
+.summarySection {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.summaryCard {
+  flex: 1;
+  height: 128px;
+}
+
+/* 3. 하단 메인 본문 */
+.mainContent {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+/* 왼쪽 구독 목록 */
+.listContainer {
+  flex: 2;
+  min-height: 580px;
+}
+
+.listHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.listTitlePlaceholder {
+  width: 140px;
+  height: 28px;
+  background-color: #e5e7eb;
+  border-radius: 6px;
+}
+
+.listButtonPlaceholder {
+  width: 64px;
+  height: 36px;
+  background-color: #3b82f6;
+  border-radius: 8px;
+}
+
+.tablePlaceholder {
+  width: 1130px;
+  height: 616px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* 오른쪽 사이드바 */
+.sidebar {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.chartCard {
+  height: 380px;
+}
+
+.chartTitlePlaceholder {
+  width: 120px;
+  height: 26px;
+  background-color: #e5e7eb;
+  border-radius: 6px;
+  margin-bottom: 30px;
+}
+
+.activityCard {
+  height: 240px;
+}
+
+.activityTitlePlaceholder {
+  width: 150px;
+  height: 26px;
+  background-color: #e5e7eb;
+  border-radius: 6px;
+}
+
+.addButton {
+  background-color: #3b82f6;
+  color: white;
+  padding: 0 16px; /* 좌우 패딩만 조절 */
+  height: 36px;    /* MUI 버튼 높이와 일치시킴 */
+  border-radius: 8px;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.addButton:hover {
+  background-color: #2563eb; /* 약간 더 진한 블루 */
+}
+
+.addButton:active {
+  transform: translateY(0);
+  background-color: #1d4ed8;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 12px; /* 버튼 사이의 간격 */
+  align-items: center;
+}
+
+.noData {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 250px; /* 차트 영역과 동일한 높이 유지 */
+  color: #9ca3af;
+  font-size: 14px;
+  background-color: #fcfcfc; /* 아주 연한 회색으로 영역 구분 (선택사항) */
+  border-radius: 8px;
+  border: 1px dashed #e5e7eb; /* 영역이 비어있음을 암시하는 대시선 */
+}

@@ -1,0 +1,158 @@
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  background-color: #ffffff;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e0e0e0;
+}
+/* 사이드바 너비 설정 */
+.open { width: 280px; }
+.collapsed { width: 72px; } /* 아이콘 시인성을 위해 68px에서 72px로 소폭 상향 */
+
+/* 헤더(햄버거 버튼) 영역 */
+.sidebarHeader {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  padding-left: 22px; /* 🔴 펼치든 접든 무조건 왼쪽 22px 고정 */
+  gap: 15px;
+}
+
+.burgerButton {
+  background: none;
+  border: none;
+  color: #000;
+  cursor: pointer;
+  display: flex;
+  padding: 0;
+  transition: transform 0.2s ease;
+}
+
+.burgerButton:hover {
+  transform: scale(1.1);
+}
+
+.projectTitle {
+  font-weight: bold;
+  font-size: 1.2rem;
+  letter-spacing: 1px;
+  color: #1e00ff;
+  white-space: nowrap;
+}
+
+.menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+}
+
+.menuItem a {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  text-decoration: none;
+  color: #444;
+  margin: 4px 10px; 
+  border-radius: 12px;
+  transition: background-color 0.2s ease;
+  
+  /* 🔴 아이콘 위치의 "기준점". 모든 상태에서 동일해야 합니다. */
+  padding-left: 14px; 
+  justify-content: flex-start; /* 🔴 무조건 왼쪽 정렬 */
+}
+
+/* 접혔을 때도 왼쪽 정렬 및 위치 고정 */
+.collapsed .menuItem a {
+  padding-left: 14px; /* 접혀도 14px 유지 */
+  justify-content: flex-start; /* 접혀도 중앙으로 가지 않음 */
+}
+
+.menuItem a:hover, 
+.menuItem a.active {
+  background-color: #f2f2f2;
+  color: #000;
+}
+
+.iconWrapper {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0; /* 아이콘 크기 사수 */
+}
+
+/* 글자 애니메이션: 제자리에서 사라지기 */
+.menuText {
+  margin-left: 20px;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  /* 🔴 transform: translateX 등을 쓰면 글자가 튀므로 opacity만 사용 */
+  transition: opacity 0.2s ease; 
+}
+
+.open .menuText {
+  opacity: 1;
+  display: block;
+}
+
+.collapsed .menuText {
+  opacity: 0;
+  display: none; /* 🔴 공간을 완전히 없애야 아이콘이 중앙으로 밀리지 않습니다 */
+}
+
+/* 하단 영역 (프로필/로그아웃) */
+.bottomArea {
+  padding: 15px 20px;
+  border-top: 1px solid #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 하단 영역도 접혔을 때 왼쪽 고정 */
+.collapsed .bottomArea {
+  padding-left: 22px; 
+  align-items: flex-start;
+}
+
+.userInfo, .logoutBtn {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: #555;
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.logoutBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 100%;
+}
+
+.logoutBtn:hover {
+  color: #ff4d4d;
+}
+
+/* 🔴 Lucide 아이콘 자체 크기 강제 (CSS로도 한 번 더 고정) */
+.iconWrapper svg {
+  width: 26px !important; 
+  height: 26px !important;
+  flex-shrink: 0;
+}
+
+.collapsed .sidebarHeader {
+  justify-content: flex-start; 
+  padding-left: 22px; 
+}

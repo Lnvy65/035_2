@@ -1,0 +1,84 @@
+
+.container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 80vh; /* 헤더 고려 */
+}
+
+.card {
+  padding: 40px;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  background-color: #fff;
+  text-align: center;
+}
+
+.title {
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.field {
+  text-align: left;
+}
+
+.label {
+  font-size: 14px;
+  color: #666;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.input {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  font-size: 16px;
+  box-sizing: border-box;
+  outline: none;
+}
+
+.input:focus {
+  border-color: #007bff;
+}
+
+.button {
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 6px;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  font-weight: bold;
+  background-color: #007bff; /* 기본 파란색 */
+  cursor: pointer;
+  
+  /* 색상 변화를 부드럽게 */
+  transition: background-color 0.2s ease-in-out, box-shadow 0.2s;
+}
+
+.button:hover {
+  background-color: #0069d9; /* 요청하신 자연스러운 어두운 파랑 */
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.2); /* 미세한 그림자 추가 */
+}
+
+.button:active {
+  background-color: #0056b3; /* 클릭했을 때 피드백을 위해 조금 더 어둡게 */
+}
+
+.button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+

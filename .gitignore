@@ -1,0 +1,15 @@
+./035-backend/node_modules
+./035-backend/backend_start.bat
+
+./035-batch/main_3.6.py
+./035-batch/main_3.14.py
+./035-batch/README.md
+./035-batch/start.bat
+
+./035-frontend/node_modules
+./035-frontend/.env.production
+
+node_modules/
+npm-debug.log
+.env
+dist/
