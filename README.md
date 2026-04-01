@@ -1,10 +1,15 @@
 # 035
 
-db조작시 dbeaver 필요
-035-backend, 035-frontend 에서 따로 터미널 열고
+* db조작시 dbeaver 필요
+* 035-backend, 035-frontend 에서 따로 터미널 열고
 npm start (백엔드에서)
 npm run dev (프론트에서)
 입력후 사용가능
+* 로그인 안될시 아이디 : carneky 비번 : coreplus01 입력후 사용자 페이지에서 N -> Y로 바꾸면 로그인가능
+* admin 권한도 동일한 방법으로 획득 가능
+
+* 
+
 
 ## 추가적인 아이디어
 > [!NOTE] 
