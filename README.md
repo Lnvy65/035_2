@@ -18,7 +18,8 @@ npm run dev (프론트에서)
 </details>
 <details>
     <summary>류준상</summary>
-    
+
+    이벤트 페이지 추가하기
         
 </details>
 <details>
