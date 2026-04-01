@@ -8,9 +8,33 @@ npm run dev (프론트에서)
 * 로그인 안될시 아이디 : carneky 비번 : coreplus01 입력후 사용자 페이지에서 N -> Y로 바꾸면 로그인가능
 * admin 권한도 동일한 방법으로 획득 가능
 ---
-```
-최경욱 - mainPage 추가 버튼 활성화 / cell클릭시 수정창 팝업 만들기 / 우측 하단 알림 관리자일시 알림글 추가 가능한 버튼? 만들기
-```
+
+<details>
+    <summary>최경욱</summary>
+    
+    최경욱 - mainPage 추가 버튼 활성화 / cell클릭시 수정창 팝업 만들기 / 우측 하단 알림 관리자일시 알림글 추가 가능한 버튼? 만들기 
+</details>
+<details>
+    <summary>류준상</summary>
+    
+        
+</details>
+<details>
+    <summary>최주형</summary>
+
+        
+</details>
+<details>
+    <summary>김태율</summary>
+
+        
+</details>
+<details>
+    <summary>이주영</summary>
+
+        
+</details>
+
 
 ## 추가적인 아이디어
 > [!NOTE] 
