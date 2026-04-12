@@ -768,7 +768,6 @@ const MainPage = () => {
                         userName: user.username,
                         SEQ: editData.SEQ
                       });
-                      alert(editData.USE_YN);
                     }}
                     disabled={
                       !editData ||
