@@ -9,8 +9,7 @@ npm start (백엔드에서)
 
 <details>
     <summary>최경욱</summary>
-    
-    --cell클릭시 수정창 팝업 만들기--  
+     
     alert SweetAlert2로 바꾸기
     우측 하단 알림 관리자일시 알림글 추가 가능한 버튼? 만들기  
     외화 계산후 구독금액 보여주기  
