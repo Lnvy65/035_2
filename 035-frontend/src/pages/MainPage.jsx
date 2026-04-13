@@ -283,9 +283,20 @@ const MainPage = () => {
     // 1. 삭제 버튼(actions) 클릭 시에는 로직 방지 (이미 IconButton에서 e.stopPropagation 처리됨)
     if (params.field === 'actions') return;
 
-    // 2. 그 외의 컬럼(제목, 내용 등) 클릭 시 수정/상세 팝업 오픈
-    setEditData({ ...params.row });
-    setOldEditData({ ...params.row }); // 수정 전 데이터 저장
+    // 2. 가격 데이터 포맷팅 (숫자 -> 콤마 포함 문자열)
+    // Grid에서 넘어온 원본 데이터(params.row.MONTHLY_PRICE)가 숫자일 경우를 대비해 변환합니다.
+    const formattedPrice = params.row.MONTHLY_PRICE 
+      ? Number(params.row.MONTHLY_PRICE).toLocaleString() 
+      : "";
+
+    const rowWithFormattedPrice = { 
+      ...params.row, 
+      MONTHLY_PRICE: formattedPrice 
+    };
+
+    // 3. 팝업 오픈 및 데이터 세팅
+    setEditData(rowWithFormattedPrice);
+    setOldEditData(rowWithFormattedPrice); // 비교를 위해 old 데이터도 동일한 포맷으로 저장
     setOpenEdit(true);
   };
 
@@ -345,6 +356,64 @@ const MainPage = () => {
     setOldEditData(null); // 수정 전 데이터 초기화
   };
 
+  // 수정 날짜 형식 자동 하이픈 추가 핸들러 (YYYY-MM-DD)
+  const handleDateChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "");
+    const formattedValue = value
+      .replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
+      .replace(/^(\d{4})(\d{2})$/, "$1-$2")
+      .substring(0, 10);
+
+    // 상태 업데이트
+    setEditData({ ...editData, NEXT_BILLING_DT: formattedValue });
+  };
+
+
+  const handleDateBlur = (e) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (!value) return;
+
+    let year, month, day;
+
+    // 1. 날짜 데이터 추출
+    if (value.length === 6) {
+      year = parseInt("20" + value.slice(0, 2), 10);
+      month = parseInt(value.slice(2, 4), 10);
+      day = parseInt(value.slice(4, 6), 10);
+    } else if (value.length === 8) {
+      year = parseInt(value.slice(0, 4), 10);
+      month = parseInt(value.slice(4, 6), 10);
+      day = parseInt(value.slice(6, 8), 10);
+    } else {
+      const parts = e.target.value.split("-");
+      if (parts.length !== 3) return;
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      day = parseInt(parts[2], 10);
+    }
+
+    // 2. 유효성 보정 (월) - 00이 들어오면 01로, 12보다 크면 12로
+    if (month > 12) month = 12;
+    if (month < 1 || isNaN(month)) month = 1; // ✨ 00 또는 빈 값일 때 01로 변경
+
+    // 3. 해당 월의 마지막 날짜 계산 (보정된 month 기준)
+    const lastDayInMonth = new Date(year, month, 0).getDate();
+
+    // 4. 유효성 보정 (일)
+    if (day > lastDayInMonth) day = lastDayInMonth;
+    if (day < 1 || isNaN(day)) day = 1;
+
+    // 5. [핵심] 입력한 일자가 해당 월의 말일이면 31(말일)로 세팅
+    const matchedAnchorDay = (day === lastDayInMonth) ? 31 : day;
+
+    const finalDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+    setEditData({ 
+      ...editData, 
+      NEXT_BILLING_DT: finalDate,
+      ANCHOR_DAY: matchedAnchorDay 
+    });
+  };
 
   return (
     <div className={styles.container}>
@@ -638,25 +707,44 @@ const MainPage = () => {
                         label="결제 예정일"
                         fullWidth
                         value={editData.NEXT_BILLING_DT}
-                        onChange={(e) => setEditData({...editData, NEXT_BILLING_DT: e.target.value})}
+                        placeholder="8자리 또는 6자리로 입력"
+                        onChange={handleDateChange}
+                        onBlur={handleDateBlur}
+                        inputProps={{ maxLength: 10 }}
                       />
 
                       {/* 4. 정기 결제일 (드롭다운) */}
                       <TextField
                         select
                         label="정기 결제일"
-                        fullWidth // 또는 sx={{ width: '150px' }}
+                        fullWidth
                         value={editData.ANCHOR_DAY || ''}
-                        onChange={(e) => setEditData({...editData, ANCHOR_DAY: e.target.value})}
+                        onChange={(e) => {
+                          const newAnchorDay = parseInt(e.target.value, 10);
+                          
+                          // 현재 입력되어 있는 날짜에서 연, 월 추출 (없으면 오늘 기준)
+                          const baseDate = editData.NEXT_BILLING_DT ? new Date(editData.NEXT_BILLING_DT) : new Date();
+                          const year = baseDate.getFullYear();
+                          const month = baseDate.getMonth() + 1;
+
+                          // 선택한 일자가 해당 월의 마지막 날보다 크거나 31(말일)이면 해당 월의 실제 막날로 보정
+                          const lastDayInMonth = new Date(year, month, 0).getDate();
+                          let targetDay = newAnchorDay;
+                          
+                          if (newAnchorDay === 31 || newAnchorDay > lastDayInMonth) {
+                            targetDay = lastDayInMonth;
+                          }
+
+                          const newDateStr = `${year}-${String(month).padStart(2, "0")}-${String(targetDay).padStart(2, "0")}`;
+
+                          setEditData({
+                            ...editData,
+                            ANCHOR_DAY: newAnchorDay,
+                            NEXT_BILLING_DT: newDateStr
+                          });
+                        }}
                         SelectProps={{
-                          MenuProps: {
-                            PaperProps: {
-                              style: {
-                                maxHeight: 200, // 픽셀 단위로 높이 제한 (약 5~6개 항목 노출)
-                                width: 120,     // 드롭다운 펼쳐졌을 때의 너비도 조절 가능
-                              },
-                            },
-                          },
+                          MenuProps: { PaperProps: { style: { maxHeight: 200, width: 120 } } }
                         }}
                       >
                         {DAYS.map((day) => (
@@ -770,15 +858,17 @@ const MainPage = () => {
                       });
                     }}
                     disabled={
+                      updateMutation.isPending||
                       !editData ||
-                      oldEditData.SERVICE_NM === editData.SERVICE_NM &&
-                      oldEditData.MONTHLY_PRICE === editData.MONTHLY_PRICE &&
-                      oldEditData.NEXT_BILLING_DT === editData.NEXT_BILLING_DT &&
-                      oldEditData.ANCHOR_DAY === editData.ANCHOR_DAY &&
-                      oldEditData.BILLING_CYCLE === editData.BILLING_CYCLE &&
-                      oldEditData.CATEGORY === editData.CATEGORY &&
-                      oldEditData.USE_YN === editData.USE_YN ||
-                      updateMutation.isLoading
+                      (
+                        oldEditData.SERVICE_NM === editData.SERVICE_NM &&
+                        oldEditData.MONTHLY_PRICE === editData.MONTHLY_PRICE &&
+                        oldEditData.NEXT_BILLING_DT === editData.NEXT_BILLING_DT &&
+                        oldEditData.ANCHOR_DAY === editData.ANCHOR_DAY &&
+                        oldEditData.BILLING_CYCLE === editData.BILLING_CYCLE &&
+                        oldEditData.CATEGORY === editData.CATEGORY &&
+                        oldEditData.USE_YN === editData.USE_YN
+                      )
                     }
                     variant="contained" 
                     sx={{ backgroundColor: '#000', '&:hover': { backgroundColor: '#333' } }}
