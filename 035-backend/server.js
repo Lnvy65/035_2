@@ -49,7 +49,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-let db, db2;
+let db, db2, db3;
 (async () => {
     db = await open({ filename: './database.db', driver: sqlite3.Database });
     db2 = await open({ filename: '../035-batch/database.db', driver: sqlite3.Database });
