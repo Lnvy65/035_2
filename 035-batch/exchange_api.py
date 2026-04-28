@@ -3,54 +3,63 @@
 import requests
 import time
 from datetime import datetime
+import sqlite3
 
 # 발급받은 인증키를 여기에 입력하세요
 AUTH_KEY = "ayqKUojPCHjQgLjjKrUtr2zPTxbkLHmy"
-# 조회할 날짜 (YYYYMMDD 형식, 생략 시 최신 데이터)
-#DATETTIME = 20260427
 # 데이터 타입 (JSON 권장)
 DATA_TYPE = "AP01" 
 
 def get_exchange_rates():
-    # API 요청 주소
     url = "https://www.koreaexim.go.kr/site/program/financial/exchangeJSON"
     
-    # 오늘 날짜 (주말이나 공휴일에는 데이터가 없을 수 있습니다)
-    # searchdate 파라미터를 생략하면 최신 데이터를 가져옵니다.
     params = {
         'authkey': AUTH_KEY,
-        #'searchdate': DATETTIME,
         'data': DATA_TYPE
     }
 
-    try:
-        response = requests.get(url, params=params, verify=False) # SSL 인증서 이슈 발생 시 verify=False
-        
-        if response.status_code == 200:
-            data = response.json()
-            
-            if not data:
-                print(f"[{datetime.now()}] 데이터가 없습니다. (영업시간 외 또는 공휴일)")
-                return
+    response = requests.get(url, params=params)
 
-            print(f"[{datetime.now()}] 환율 정보를 가져왔습니다. (총 {len(data)}개 통화)")
-            print("-" * 50)
-            for item in data:
-                # 결과값 출력 (통화코드, 통화명, 매매기준율)
-                print(f"통화: {item['cur_unit']} ({item['cur_nm']}) | 환율: {item['deal_bas_r']}")
-            print("-" * 50)
-        else:
-            print(f"API 요청 실패: {response.status_code}")
-            
-    except Exception as e:
-        print(f"오류 발생: {e}")
+    if response.status_code != 200:
+        print("API 실패")
+        return
+
+    data = response.json()
+
+    for item in data:
+        rate = float(item['deal_bas_r'].replace(",", ""))
+        unit = item['cur_unit']
+
+        if "(100)" in unit:
+            unit = unit.replace("(100)", "")
+            rate /= 100
+
+        save_to_database({
+            'cur_unit': unit,
+            'deal_bas_r': rate,
+            'cur_nm': item['cur_nm']
+        })
+
+def save_to_database(data):
+    conn = sqlite3.connect("../035-backend/035_database.db")
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO exchange_rate (currency, exchange_rate, cur_nm)
+        VALUES (?, ?, ?)
+    """, (data['cur_unit'], data['deal_bas_r'], data['cur_nm']))
+    conn.commit()
+    conn.close()
+
+
+
 
 def main():
-    print("환율 모니터링을 시작합니다. (10분 간격)")
     while True:
-        get_exchange_rates()
-        # 600초(10분) 대기
-        time.sleep(600)
+        if datetime.now().hour == 10 and datetime.now().minute == 0:
+            print("10시 정각입니다. 환율 정보를 가져옵니다.")
+            get_exchange_rates()
+        time.sleep(60)  # 1분마다 체크
 
 if __name__ == "__main__":
     main()
