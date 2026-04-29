@@ -2,7 +2,8 @@ import { NavLink } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import useSidebarStore from "../store/sidebarStore";
 import styles from "../styles/Sidebar.module.css";
-import { Home, Users, Settings, Coffee, Menu, LogOut } from "lucide-react";
+// [수정된 부분] Gift 아이콘 임포트 추가
+import { Home, Users, Settings, Coffee, Menu, LogOut, Gift } from "lucide-react"; 
 import { useLogout } from "../hooks/useLogout"; // 로그아웃 훅이 있다고 가정
 
 const Sidebar = () => {
@@ -37,6 +38,15 @@ const Sidebar = () => {
             </NavLink>
           </li>
         )}
+
+        {/* [수정된 부분] 이벤트 탭 추가 */}
+        <li className={styles.menuItem}> 
+          <NavLink to="/event" className={({ isActive }) => isActive ? styles.active : ""}> 
+            <Gift size={22} /> 
+            <span className={styles.menuText}>이벤트</span> 
+          </NavLink> 
+        </li> 
+        {/* [수정된 부분] 끝 */}
 
         <li className={styles.menuItem}>
           <NavLink to="/profile" className={({ isActive }) => isActive ? styles.active : ""}>

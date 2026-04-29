@@ -39,6 +39,32 @@ const upload = multer({
     limits: { fileSize: 100 * 1024 * 1024 },
 });
 
+// [수정된 부분] 이벤트 이미지 전용 업로드 경로 및 Multer 설정 추가
+const EVENT_UPLOAD_DIR = "uploads/event";
+const EVENT_UPLOAD_PATH = path.join(__dirname, EVENT_UPLOAD_DIR);
+app.use('/event_img', express.static(EVENT_UPLOAD_PATH));
+
+if (!fs.existsSync(EVENT_UPLOAD_PATH)) {
+    fs.mkdirSync(EVENT_UPLOAD_PATH, { recursive: true });
+}
+
+const eventStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, EVENT_UPLOAD_PATH); 
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        const filename = `event_${Date.now()}${ext}`;
+        cb(null, filename);
+    }
+});
+
+const eventUpload = multer({
+    storage: eventStorage,
+    limits: { fileSize: 100 * 1024 * 1024 },
+});
+// [수정된 부분] 끝
+
 app.use(cors({
     origin: true,
     credentials: true,
@@ -977,16 +1003,71 @@ app.post('/rest/main/updatesub', async (req, res) => {
     }
 });
 
+// -----------------------------------------------------------------------------------------------------------
+// /rest/event/list 
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/event/list', async (req, res) => { 
+    const accessToken = req.headers['authorization']; 
+    if (!accessToken) return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." }); 
 
+    try { 
+        jwt.verify(accessToken, SECRET_KEY); 
+        const events = await db.all('SELECT * FROM TB_EVENT ORDER BY SEQ DESC'); 
+        res.json({ result: events, message: "이벤트 조회 성공" }); 
+    } catch (error) { 
+        res.status(401).json({ stt: -1, message: error.message }); 
+    } 
+}); 
 
+// -----------------------------------------------------------------------------------------------------------
+// /rest/event/add 
+// -----------------------------------------------------------------------------------------------------------
+// [수정된 부분] eventUpload.single('image') 미들웨어를 추가하여 파일 데이터 처리
+app.post('/rest/event/add', eventUpload.single('image'), async (req, res) => { 
+    const accessToken = req.headers['authorization']; 
+    if (!accessToken) return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." }); 
 
+    const { title, content } = req.body; 
+    const imgName = req.file ? req.file.filename : null;
 
+    try { 
+        const decoded = jwt.verify(accessToken, SECRET_KEY); 
+        if (decoded.roles !== "ADMIN") return res.status(403).json({ message: "권한이 없습니다." }); 
 
+        const result = await db.run( 
+            'INSERT INTO TB_EVENT (TITLE, CONTENT, IMG_NAME) VALUES (?, ?, ?)', 
+            [title, content, imgName] 
+        ); 
+        
+        if (result.changes > 0) res.json({ message: "이벤트 추가 성공" }); 
+        else res.status(500).json({ message: "이벤트 추가 실패" }); 
+    } catch (error) { 
+        res.status(401).json({ stt: -1, message: error.message }); 
+    } 
+}); 
+// [수정된 부분] 끝
 
+// -----------------------------------------------------------------------------------------------------------
+// /rest/event/delete 
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/event/delete', async (req, res) => { 
+    const accessToken = req.headers['authorization']; 
+    if (!accessToken) return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." }); 
 
+    const { seq } = req.body; 
 
+    try { 
+        const decoded = jwt.verify(accessToken, SECRET_KEY); 
+        if (decoded.roles !== "ADMIN") return res.status(403).json({ message: "권한이 없습니다." }); 
 
-
+        const result = await db.run('DELETE FROM TB_EVENT WHERE SEQ = ?', [seq]); 
+        
+        if (result.changes > 0) res.json({ message: "이벤트 삭제 성공" }); 
+        else res.status(404).json({ message: "삭제할 이벤트를 찾지 못했습니다." }); 
+    } catch (error) { 
+        res.status(401).json({ stt: -1, message: error.message }); 
+    } 
+}); 
 
 app.listen(PORT, () => {
     console.log(`서버가 실행되었습니다: http://localhost:${PORT}`);

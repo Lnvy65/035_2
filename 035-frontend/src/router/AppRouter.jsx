@@ -5,6 +5,7 @@ import MainPage from "../pages/MainPage";
 import ManageUserPage from "../pages/ManageUserPage";
 import ProfilePage from "../pages/ProfilePage";
 import SignUpPage from "../pages/SignUpPage";
+import EventPage from "../pages/EventPage"; // 수정된 부분: 이벤트 페이지 임포트 추가
 import Layout from "../components/Layout";
 
 const AppRouter = () => {  
@@ -34,6 +35,13 @@ const AppRouter = () => {
         path="/manageUser"
         element={user?.roles === "ADMIN" ? <Layout><ManageUserPage /></Layout> : <Navigate to="/login" />}
       />        
+      
+      {/* 수정된 부분: 이벤트 페이지 라우트 추가 */}
+      <Route
+        path="/event"
+        element={isAuthenticated ? <Layout><EventPage /></Layout> : <Navigate to="/login" />}
+      />
+      {/* 수정된 부분 끝 */}
     </Routes>
   );
 };
