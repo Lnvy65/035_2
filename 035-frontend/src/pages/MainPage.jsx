@@ -257,6 +257,7 @@ const MainPage = () => {
       queryClient.invalidateQueries({ queryKey: ["selectsubchart"] });
       setOpenCreate(false);
       alert("생성되었습니다.");
+      
     },
   });
 

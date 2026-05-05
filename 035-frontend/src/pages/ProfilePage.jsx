@@ -10,8 +10,6 @@ const ProfilePage = () => {
   const { user, updateUser } = useAuthStore();
   
   // 상태 관리
-  const [exchangeRate, setExchangeRate] = useState(user?.my_exchange_rate || "");
-  const [address, setAddress] = useState(user?.address || ""); // 주소 상태 추가
   const [isPostcodeOpen, setIsPostcodeOpen] = useState(false); // 주소창 팝업 여부  
   const [imgMyProfile, setImgMyProfile] = useState(null); // 상단 useState 추가
   const [previewImg, setPreviewImg] = useState(null);  // 상단 useState 추가 
@@ -38,23 +36,6 @@ const ProfilePage = () => {
   };  
 
 
-  // 주소 선택 완료 핸들러
-  const handleAddressComplete = (data) => {
-    let fullAddress = data.address;
-    let extraAddress = "";
-
-    if (data.addressType === "R") {
-      if (data.bname !== "") extraAddress += data.bname;
-      if (data.buildingName !== "") {
-        extraAddress += extraAddress !== "" ? `, ${data.buildingName}` : data.buildingName;
-      }
-      fullAddress += extraAddress !== "" ? ` (${extraAddress})` : "";
-    }
-
-    setAddress(fullAddress);
-    setIsPostcodeOpen(false);
-  };
-
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPassword((prev) => ({ ...prev, [name]: value }));
@@ -66,17 +47,10 @@ const ProfilePage = () => {
       return;
     }
 
-    if (!exchangeRate || isNaN(exchangeRate) || Number(exchangeRate) <= 0) {
-      alert("유효한 환율 값이 아닙니다.");
-      return;
-    }
-
     // 수정된 API 파라미터 (주소 포함)
     updateProfileMutation.mutate({
       user: user.username,
       password: password.new,
-      buyingAmt: exchangeRate,
-      address: address, // 주소 추가
       imgMyProfile: imgMyProfile, // ✅ 추가
     });
   };
@@ -84,9 +58,7 @@ const ProfilePage = () => {
   const updateProfileMutation = useMutation({
     mutationFn: updateProfileApi,
     onSuccess: (data) => {
-      updateUser({ 
-        my_exchange_rate: Number(data.my_exchange_rate),
-        address: data.address // 전역 스토어 업데이트
+      updateUser({
       });
       setPassword({ new: "", confirm: "" });
       alert("설정이 저장되었습니다.");
@@ -140,50 +112,6 @@ const ProfilePage = () => {
         </div>
       </section>
 
-      {/* 주소 설정 섹션 (새로 추가) */}
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}><MapPin size={20} /> 주소 설정</h3>
-        <div className={styles.inputGroup}>
-          <label className={styles.label}>배송지/활동 주소</label>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <input
-              type="text"
-              value={address}
-              readOnly
-              className={styles.input}
-              placeholder="주소 검색을 클릭해 주세요"
-            />
-            <button 
-              type="button"
-              onClick={() => setIsPostcodeOpen(!isPostcodeOpen)}
-              className={styles.searchButton} // CSS 추가 필요
-              style={{ display: "flex", alignItems: "center", gap: "4px", padding: "0 15px", whiteSpace: "nowrap" }}
-            >
-              <Search size={16} /> 주소 검색
-            </button>
-          </div>
-          
-          {/* 주소 검색창 레이어 */}
-          {isPostcodeOpen && (
-            <div style={{ 
-              border: "1px solid #ccc", 
-              marginTop: "10px", 
-              width: "520px",  // 너비 조절
-              height: "300px", // 높이 조절       
-              position: "relative" 
-            }}>
-              <DaumPostcode onComplete={handleAddressComplete} autoClose={false} />
-              <button 
-                onClick={() => setIsPostcodeOpen(false)}
-                style={{ width: "100%", padding: "10px", background: "#f4f4f4", border: "none", cursor: "pointer" }}
-              >
-                닫기
-              </button>
-            </div>
-          )}
-        </div>
-      </section>
-
       {/* 비밀번호 수정 섹션 */}
       <section className={styles.section}>
         <h3 className={styles.sectionTitle}><Lock size={20} /> 암호 수정</h3>
@@ -208,24 +136,6 @@ const ProfilePage = () => {
             className={styles.input}
             placeholder="비밀번호 확인"
           />
-        </div>
-      </section>
-
-      {/* 환율 가이드라인 섹션 */}
-      <section className={styles.section}>
-        <h3 className={styles.sectionTitle}><DollarSign size={20} /> 가이드라인 설정</h3>
-        <div className={styles.inputGroup}>
-          <label className={styles.label}>기준 환율 (1 USD)</label>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <input
-              type="number"
-              value={exchangeRate}
-              onChange={(e) => setExchangeRate(e.target.value)}
-              className={`${styles.input} ${styles.inputNumber}`}
-            />
-            <span className={styles.currencyUnit}>KRW</span>
-          </div>
-          <p className={styles.helperText}>* 환율에 적용될 개인가이드라인 입니다.</p>
         </div>
       </section>
 

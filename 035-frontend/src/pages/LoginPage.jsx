@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 import styles from "../styles/LoginPage.module.css";
 
 const LoginPage = () => {
-  const [username, setUsername] = useState(null);
-  const [password, setPassword] = useState(null);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const loginMutation = useLogin();
   const navigate = useNavigate();
 
@@ -25,6 +25,7 @@ const LoginPage = () => {
             <label className={styles.label}>아이디</label>
             <input
               className={styles.input}
+              value={username}
               placeholder="사용자명"
               onChange={(e) => setUsername(e.target.value)}
             />
@@ -34,8 +35,9 @@ const LoginPage = () => {
             <label className={styles.label}>비밀번호</label>
             <input
               type="password"
+              value={password}
               className={styles.input}
-              placeholder="비밀번호"
+              placeholder="비밀번호"              
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
