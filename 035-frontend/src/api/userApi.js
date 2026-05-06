@@ -22,7 +22,7 @@ export const oneUserApi = async ({id}) => {
   return response.data;
 };
 
-export const modifyUserApi = async ({id, username, kname, roles, email, address, use_yn}) => {
+export const modifyUserApi = async ({id, username, kname, roles, email, use_yn}) => {
   const response = await api.post(
     "/rest/user/modifyuser",
     { 
@@ -31,7 +31,6 @@ export const modifyUserApi = async ({id, username, kname, roles, email, address,
       "kname" : kname, 
       "roles" : roles, 
       "email" : email, 
-      "address" : address,
       "use_yn" : use_yn
     },
     {
@@ -42,11 +41,11 @@ export const modifyUserApi = async ({id, username, kname, roles, email, address,
   return response.data;
 };
 
-export const deleteUserApi = async ({id}) => {
+export const deleteUserApi = async ({seq}) => {
   const response = await api.post(
     "/rest/user/deleteuser",
     { 
-      "id" : id
+      "id" : seq
     },
     {
       withCredentials: true,
@@ -56,7 +55,7 @@ export const deleteUserApi = async ({id}) => {
   return response.data;
 };
 
-export const addUserApi = async ({id, username, password, kname, roles, email, address, use_yn}) => {
+export const addUserApi = async ({id, username, password, kname, roles, email, use_yn}) => {
   const response = await api.post(
     "/rest/user/adduser",
     { 
@@ -66,7 +65,6 @@ export const addUserApi = async ({id, username, password, kname, roles, email, a
       "kname" : kname,
       "roles" : roles,
       "email" : email,
-      "address" : address,
       "use_yn" : use_yn
     },
     {
@@ -78,12 +76,10 @@ export const addUserApi = async ({id, username, password, kname, roles, email, a
 };
 
 
-export const updateProfileApi = async ({user, password, buyingAmt, address, imgMyProfile}) => {
+export const updateProfileApi = async ({user, password, imgMyProfile}) => {
   const formData = new FormData();
   formData.append("user", user);
   formData.append("password", password);
-  formData.append("buyingAmt", buyingAmt);
-  formData.append("address", address);
 
   // 파일일 경우만 추가
   if (imgMyProfile) {
@@ -100,3 +96,5 @@ export const updateProfileApi = async ({user, password, buyingAmt, address, imgM
 
   return response.data;
 };
+
+

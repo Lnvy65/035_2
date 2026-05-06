@@ -18,16 +18,15 @@ const ManageUserPage = () => {
     password: "",
     roles: "USER",
     email: "",
-    address: "",
     use_yn: "Y",
   });
 
   const columns = [
-    { field: "id", headerName: "ID", width: 60, headerAlign: "center", align: "center" },
-    { field: "username", headerName: "아이디", width: 110, editable: true, headerAlign: "center", align: "center" },
-    { field: "kname", headerName: "이름", width: 130, editable: true, headerAlign: "center", align: "center"  },
+    { field: "SEQ", headerName: "ID", width: 60, headerAlign: "center", align: "center" },
+    { field: "ID", headerName: "아이디", width: 110, editable: true, headerAlign: "center", align: "center" },
+    { field: "USER_NM", headerName: "이름", width: 130, editable: true, headerAlign: "center", align: "center"  },
     { 
-      field: "roles", 
+      field: "ROLES", 
       headerName: "권한", 
       width: 120, 
       editable: true, 
@@ -36,10 +35,9 @@ const ManageUserPage = () => {
       headerAlign: "center", 
       align: "center" 
     },    
-    { field: "email", headerName: "이메일", width: 180, editable: true, headerAlign: "center", align: "center"  },
-    { field: "address", headerName: "주소", flex: 1, editable: true, headerAlign: "center", align: "left"  },
+    { field: "EMAIL", headerName: "이메일", width: 180, editable: true, headerAlign: "center", align: "center"  },
     { 
-      field: "use_yn", 
+      field: "USE_YN", 
       headerName: "사용여부", 
       width: 80, 
       editable: true, 
@@ -72,7 +70,7 @@ const ManageUserPage = () => {
   /* --------------------------------------------------------------------------------
    조회
   -------------------------------------------------------------------------------- */
-  const { data = [], isLoading, refetch, isFetching,} = useQuery(
+  const { data = [], isLoading, error, refetch, isFetching,} = useQuery(
     {    
       queryKey: ["alluser", searchText],
       queryFn: () => allUserApi({ keyword: searchText }),
@@ -94,7 +92,7 @@ const ManageUserPage = () => {
       queryClient.invalidateQueries({ queryKey: ["alluser"] });
     },
     onError: (error) => {
-      alert("사용자 정보 수정 실패", error.message);
+      alert("사용자 정보 수정 실패", error.message, );
       console.log(error.response.status); // 예: 500
       console.log(error.response.data);   // 서버가 보낸 실제 에러 본문 (예: { message: "DB Error" })
       console.log(error.config.url);      // 에러가 발생한 API 주소 확인 
@@ -124,13 +122,13 @@ const ManageUserPage = () => {
   -------------------------------------------------------------------------------- */  
   const handleDelete = (row) => {
     const confirm = window.confirm(
-      `사용자 "${row.username}"를 삭제하시겠습니까?`
+      `사용자 "${row.USER_NM}"를 삭제하시겠습니까?`
     );
 
     if (!confirm) return;
 
     deleteUserMutation.mutate({
-      id: row.id, // deleteUserApi에서 사용하는 키에 맞게 조정
+      seq: row.SEQ, // deleteUserApi에서 사용하는 키에 맞게 조정
     });
   };
 
@@ -145,11 +143,10 @@ const ManageUserPage = () => {
       setOpenCreate(false);  // 사용자추가화면을 안보이게 처리
       setNewUser({
         username: "",
-        kname: "",
         password: "",
+        kname: "",
         roles: "USER",
         email: "",
-        address: "",
         use_yn: "Y",
       });
     },
@@ -218,6 +215,7 @@ const ManageUserPage = () => {
           rows={data}
           columns={columns}
           showToolbar={true} 
+          getRowId={(row) => row.SEQ}
           slotProps={{
             toolbar: {
               showQuickFilter: true,
@@ -236,15 +234,14 @@ const ManageUserPage = () => {
             },
           }}
           disableRowSelectionOnClick
-          processRowUpdate={(newRow) => {
+          processRowUpdate={(newRow, oldRow) => {
             modifyUserMutation.mutate({
-              id: newRow.id,
-              username: newRow.username,
-              kname: newRow.kname,
-              roles: newRow.roles,
-              email: newRow.email,
-              address: newRow.address,
-              use_yn: newRow.use_yn,
+              id: newRow.SEQ,
+              username: newRow.ID,
+              kname: newRow.USER_NM,
+              roles: newRow.ROLES,
+              email: newRow.EMAIL,
+              use_yn: newRow.USE_YN,
             });
 
             // DataGrid에 수정된 값 반영
@@ -312,15 +309,6 @@ const ManageUserPage = () => {
                 value={newUser.email}
                 onChange={(e) =>
                   setNewUser({ ...newUser, email: e.target.value })
-                }
-                fullWidth
-              />
-
-              <TextField
-                label="주소"
-                value={newUser.address}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, address: e.target.value })
                 }
                 fullWidth
               />

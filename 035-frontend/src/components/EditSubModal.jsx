@@ -119,7 +119,7 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
       </DialogContent>
       <DialogActions sx={{ p: 2 }}>
         <Button onClick={onClose} color="inherit">닫기</Button>
-        <Button onClick={handleSaveClick} disabled={isLoading || isUnchanged} variant="contained" sx={{ backgroundColor: '#000', '&:hover': { backgroundColor: '#333' } }}>
+        <Button onClick={handleSaveClick} disabled={isLoading || isUnchanged} variant="contained" sx={{ backgroundColor: '#3b82f6', '&:hover': { backgroundColor: '#2563eb' } }}>
           저장하기
         </Button>
       </DialogActions>

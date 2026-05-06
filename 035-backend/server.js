@@ -49,11 +49,9 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-let db, db2, db3;
+let db;
 (async () => {
-    db = await open({ filename: './database.db', driver: sqlite3.Database });
-    db2 = await open({ filename: '../035-batch/database.db', driver: sqlite3.Database });
-    db3 = await open({ filename: './035_database.db', driver: sqlite3.Database });
+    db = await open({ filename: './035_database.db', driver: sqlite3.Database });
 })();
 
 // 공통 함수: 물리적 파일 삭제
@@ -72,6 +70,7 @@ const deletePhysicalFile = (fileName) => {
 // -----------------------------------------------------------------------------------------------------------
 // /rest/user/updateprofile
 // -----------------------------------------------------------------------------------------------------------
+
 app.post(
   '/rest/user/updateprofile',
   upload.single("imgMyProfile"), // ✅ 파일 업로드 미들웨어
@@ -86,7 +85,7 @@ app.post(
     console.log("/rest/user/updateprofile 호출:", accessToken);
 
     // form-data 텍스트 필드
-    const { user, password, buyingAmt, address } = req.body;
+    const { user, password } = req.body;
 
     // 업로드된 파일
     const imgMyProfile = req.file;
@@ -100,44 +99,12 @@ app.post(
         jwt.verify(accessToken, SECRET_KEY);
 
         /* =========================
-           환율 설정
-        ========================== */
-        const user_my = await db2.get(
-            'SELECT * FROM tb_my_cur_exr WHERE username = ? and currency = ?',
-            [user, 'USD']
-        );
-
-        let result;
-
-        if (user_my) {
-            result = await db2.run(
-                'UPDATE tb_my_cur_exr SET exchange_rate = ? WHERE username = ? and currency = ?',
-                [buyingAmt, user, 'USD']
-            );
-        } else {
-            result = await db2.run(
-                'INSERT INTO tb_my_cur_exr (username, currency, exchange_rate) VALUES (?, ?, ?)',
-                [user, 'USD', buyingAmt]
-            );
-        }
-
-        /* =========================
            비밀번호
         ========================== */
         if (password) {
             await db.run(
-                'UPDATE users SET password = ? WHERE username = ?',
+                'UPDATE users SET password = ? WHERE user_nm = ?',
                 [password, user]
-            );
-        }
-
-        /* =========================
-           주소
-        ========================== */
-        if (address) {
-            await db.run(
-                'UPDATE users SET address = ? WHERE username = ?',
-                [address, user]
             );
         }
 
@@ -153,8 +120,6 @@ app.post(
 
         res.json({
             user,
-            address,
-            my_exchange_rate: buyingAmt,
             imgMyProfile: imgMyProfile?.filename,
             message: "개인설정저장 성공!"
         });
@@ -183,7 +148,7 @@ app.post('/rest/auth/login', async (req, res) => {
     try {
         // DB에서 유저 조회
         const user = await db.get(
-            'SELECT * FROM users WHERE username = ? AND password = ?',
+            'SELECT * FROM USERS WHERE id = ? AND password = ?',
             [username, password]
         );
 
@@ -192,26 +157,21 @@ app.post('/rest/auth/login', async (req, res) => {
             return res.status(401).json({ message: "아이디 또는 비밀번호가 일치하지 않습니다." });
         }
 
-        if(user.use_yn === "N"){
+        if(user.USE_YN === "N"){
             res.status(403).json({ message: "인증되지 않은 계정입니다. 관리자에게 연락하세요." });
         }
-
-        const exr = await db2.get(
-            'select exchange_rate AS my_exchange_rate from tb_my_cur_exr where username = ?',
-            [username]
-        );
 
         if (user) {
             // 1. JWT 생성 (유효기간 2시간)
             const accessToken = jwt.sign(
-                { id: user.id, username: user.username, kname: user.kname, roles: user.roles, address: user.address, my_exchange_rate: exr.my_exchange_rate },   // payload에 필요한 정보만 전달
+                { id: user.ID, username: user.USER_NM, roles: user.ROLES },   // payload에 필요한 정보만 전달
                 SECRET_KEY,
                 { expiresIn: '2h' }
             );
 
             // 1. JWT 생성 (유효기간 24시간)
             const refreshToken = jwt.sign(
-                { id: user.id, username: user.username, kname: user.kname, roles: user.roles, address: user.address, my_exchange_rate: exr.my_exchange_rate },   // payload에 필요한 정보만 전달
+                { id: user.ID, username: user.USER_NM, roles: user.ROLES },   // payload에 필요한 정보만 전달
                 SECRET_KEY,
                 { expiresIn: '24h' }
             );            
@@ -231,7 +191,7 @@ app.post('/rest/auth/login', async (req, res) => {
             res.json(
                 {
                     accessToken : accessToken,
-                    user: { id: user.id, username: user.username, kname: user.kname, roles: user.roles, address: user.address, my_exchange_rate: exr.my_exchange_rate },
+                    user: { id: user.ID, username: user.USER_NM, roles: user.ROLES },
                     message: "로그인 성공!"
                 }
             );
@@ -300,17 +260,12 @@ app.post('/rest/auth/refresh', async (req, res) => {
         const decoded = jwt.verify(refreshToken, SECRET_KEY);   // 토큰이 유효하지 않으면 에러 발생, return문은 payuload 반환
 
         // user 조회
-        const user = await db.get('SELECT * FROM users WHERE id = ?', [decoded.id]);
-
-        const exr = await db2.get(
-            'select exchange_rate AS my_exchange_rate from tb_my_cur_exr where username = ?',
-            [decoded.username]
-        );        
+        const user = await db.get('SELECT * FROM USERS WHERE id = ?', [decoded.id]);
 
         if (user) {
             // 1. JWT 생성 (유효기간 2시간)
             const accessToken = jwt.sign(
-                { id: user.id, username: user.username, kname: user.kname, roles: user.roles, address: user.address, my_exchange_rate: exr.my_exchange_rate },
+                { id: user.ID, username: user.USER_NM, roles: user.ROLES },
                 SECRET_KEY,
                 { expiresIn: '2h' }
             );
@@ -318,7 +273,7 @@ app.post('/rest/auth/refresh', async (req, res) => {
             res.json(
                 {
                     accessToken : accessToken,
-                    user: { id: user.id, username: user.username, kname: user.kname, roles: user.roles, address: user.address, my_exchange_rate: exr.my_exchange_rate },
+                    user: { id: user.ID, username: user.USER_NM, roles: user.ROLES },
                     message: "리플레쉬 성공!"
                 }
             );
@@ -345,7 +300,7 @@ app.post('/rest/user/oneuser', async (req, res) => {
         return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." });
     }
 
-    console.log("/rest/user/oneuser 호출됐습니다 : ", accessToken);
+    //console.log("/rest/user/oneuser 호출됐습니다 : ", accessToken);
 
     // id값 가져오기
     const { id } = req.body;
@@ -358,7 +313,7 @@ app.post('/rest/user/oneuser', async (req, res) => {
         const decoded = jwt.verify(accessToken, SECRET_KEY);   // 토큰이 유효하지 않으면 에러 발생, return문은 payuload 반환
 
         // DB에서 유저 조회
-        const user = await db.get('SELECT * FROM users WHERE id = ?', [id]);
+        const user = await db.get('SELECT * FROM USERS WHERE id = ?', [id]);
         res.json(
             {
                 user: user,
@@ -402,9 +357,9 @@ app.post('/rest/user/alluser', async (req, res) => {
         // 1. keyword가 존재할 경우 WHERE 조건 동적 생성
         if (keyword && keyword.trim() !== "") {
             // 아이디(username) 또는 이름(kname)에 키워드가 포함된 경우 검색
-            query += ' WHERE username LIKE ? OR kname LIKE ? OR roles LIKE ? OR email LIKE ? OR address LIKE ?';
+            query += ' WHERE user_nm LIKE ? OR roles LIKE ? OR email LIKE ?';
             const searchKeyword = `%${keyword}%`; // 부분 일치 검색을 위해 % 추가
-            params.push(searchKeyword, searchKeyword, searchKeyword, searchKeyword, searchKeyword);
+            params.push(searchKeyword, searchKeyword, searchKeyword);
         }
 
         // 2. 정렬 조건 추가
@@ -441,7 +396,10 @@ app.post('/rest/user/modifyuser', async (req, res) => {
     console.log("/rest/user/modifyuser 호출됐습니다 : ", accessToken);
 
     // id값 가져오기
-    const { id, username, kname, roles, email, address, use_yn } = req.body;
+    const { id, username, kname, roles, email, use_yn } = req.body;
+
+    console.log("#####################################", "id : ", id, "usename : ", username, "kname : ", kname, "roles : ",  roles, "email : ",  email, "use_yn : ", use_yn);
+
     if (!id) {
         return res.status(400).json({ message: "아이디를 입력해주세요." });
     }
@@ -452,8 +410,8 @@ app.post('/rest/user/modifyuser', async (req, res) => {
 
         // 1. DB 데이터 수정 실행
         const result = await db.run(
-            'UPDATE users SET username = ?, kname = ?, roles = ?, email = ?, address = ?, use_yn = ?  WHERE id = ?',
-            [username, kname, roles, email, address, use_yn, id]
+            'UPDATE users SET user_nm = ?, roles = ?, email = ?, use_yn = ?  WHERE id = ?',
+            [kname, roles, email, use_yn, username]
         );
 
         // 2. 결과 응답
@@ -502,7 +460,7 @@ app.post('/rest/user/deleteuser', async (req, res) => {
 
         // 1. DB 데이터 수정 실행
         const result = await db.run(
-            'DELETE FROM users WHERE id = ?',
+            'DELETE FROM users WHERE seq = ?',
             [id]
         );
 
@@ -530,7 +488,7 @@ app.post('/rest/user/deleteuser', async (req, res) => {
 // -----------------------------------------------------------------------------------------------------------
 // /rest/user/add
 // -----------------------------------------------------------------------------------------------------------
-app.post('/user/adduser', async (req, res) => {
+app.post('/rest/user/adduser', async (req, res) => {
 
     // 1. Header에서 토큰 가져오기 (보통 'authorization' 필드를 사용합니다)
     const accessToken = req.headers['authorization'];
@@ -541,7 +499,7 @@ app.post('/user/adduser', async (req, res) => {
     console.log("/rest/user/adduser 호출됐습니다 : ", accessToken);
 
     // id값 가져오기
-    const { id, username, password, kname, roles, email, address, use_yn } = req.body;
+    const { id, username, password, roles, email, use_yn, kname } = req.body;
     if (!username) {
         return res.status(400).json({ message: "아이디를 입력해주세요." });
     }
@@ -552,8 +510,8 @@ app.post('/user/adduser', async (req, res) => {
 
         // 1. DB 데이터 수정 실행
         const result = await db.run(
-            'INSERT INTO users (username, password, kname, roles, email, address, use_yn) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [username, password, kname, roles, email, address, use_yn]
+            'INSERT INTO users (id, user_nm, password, roles, email, use_yn) VALUES (?, ?, ?, ?, ?, ?)',
+            [username, kname, password, roles, email, use_yn]
         );
 
         // 2. 결과 응답
@@ -578,66 +536,6 @@ app.post('/user/adduser', async (req, res) => {
 
 
 // -----------------------------------------------------------------------------------------------------------
-// /rest/exr/updatemyexr
-// -----------------------------------------------------------------------------------------------------------
-app.post('/rest/exr/updatemyexr', async (req, res) => {
-
-    // 1. Header에서 토큰 가져오기 (보통 'authorization' 필드를 사용합니다)
-    const accessToken = req.headers['authorization'];
-    if (!accessToken) {
-        return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." });
-    }
-
-    console.log("/rest/exr/updatemyexr 호출됐습니다 : ", accessToken);
-
-    // user값 가져오기
-    const { user, buyingAmt } = req.body;
-    if (!user) {
-        return res.status(400).json({ message: "아이디를 입력해주세요." });
-    }
-
-    try {
-        // 엑세스 토큰 검증
-        const decoded = jwt.verify(accessToken, SECRET_KEY);   // 토큰이 유효하지 않으면 에러 발생, return문은 payuload 반환
-
-        // DB에서 유저 조회
-        const user_my = await db2.get('SELECT * FROM tb_my_cur_exr WHERE username = ? and currency = ?', [user, 'USD']);
-        let result = "";
-
-        if(user_my){
-            result = await db2.run(
-                'UPDATE tb_my_cur_exr SET exchange_rate = ?  WHERE username = ? and currency = ? ',
-                [buyingAmt, user, 'USD']
-            );
-        }else{
-            result = await db2.run(
-                'INSERT INTO tb_my_cur_exr (username, currency, exchange_rate) VALUES ( ?, ?, ? )',
-                [user, 'USD', buyingAmt]
-            );
-        }
-
-        // 2. 결과 응답
-        if (result.changes > 0) {
-            res.json({
-                user: user,
-                message: "개인환율설정 성공!",
-            });
-        } else {
-            res.status(404).json({
-                message: "수정할 사용자를 찾지 못했습니다."
-            });
-        }
-
-    } catch (error) {
-        res.status(401).json({ 
-                stt: -1,
-                message: error.message
-        });
-    }
-});
-
-
-// -----------------------------------------------------------------------------------------------------------
 //rest/signup/signup
 // -----------------------------------------------------------------------------------------------------------
 app.post('/rest/signup/signup', async (req, res) => {
@@ -649,24 +547,17 @@ app.post('/rest/signup/signup', async (req, res) => {
         //jwt.verify(accessToken, SECRET_KEY);
 
         // 기존 파일 정보 조회 후 삭제
-        const row = await db.get('select count(*) FROM users where username = ?', [username]);
+        const row = await db.get('select count(*) FROM users where user_nm = ?', [username]);
         if(row['count(*)'] > 0){
             return res.status(400).json({ message: "아이디 중복" });
         }
-        const result = await db.run('INSERT INTO users (username, password, kname, roles, email, img_name, address, use_yn) VALUES (?, ?, ?, "USER", ?, null, null, "N")',
-        [username, password, kname, email]);
 
-        const exr = await db2.run(
-            'insert into tb_my_cur_exr (username, currency, exchange_rate) values(?, "USD", 1500)',
-            [username]
-        );
-
-        const subHub = await db3.run(
+        const result = await db.run(
             'insert into users (ID, PASSWORD, USER_NM, EMAIL, ROLES) values(?, ?, ?, ?, "USER")',
             [username, password, kname, email]
         );
 
-        if (result.changes > 0 && exr.changes > 0 && subHub.changes > 0) res.json({ message: "계정 생성 성공!" });
+        if (result.changes > 0) res.json({ message: "계정 생성 성공!" });
         else res.status(500).json({ message: "계정 생성 실패" });
     } catch (error) {
         console.error(error);
@@ -694,7 +585,7 @@ app.post('/rest/main/selectsum', async (req, res) => {
         // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
         let params = [userName];
 
-        const result = await db3.all(query, params);
+        const result = await db.all(query, params);
 
         res.json({ result: result });
 
@@ -730,7 +621,7 @@ app.post('/rest/main/selectdate', async (req, res) => {
         // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
         let params = [userName];
 
-        const result = await db3.all(query, params);
+        const result = await db.all(query, params);
 
         res.json({ result: result });
 
@@ -772,7 +663,7 @@ app.post('/rest/main/selectsublist', async (req, res) => {
         // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
         let params = [userName];
 
-        const result = await db3.all(query, params);
+        const result = await db.all(query, params);
 
         res.json({ result: result });
 
@@ -807,7 +698,7 @@ app.post('/rest/main/selectsubchart', async (req, res) => {
         // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
         let params = [userName];
 
-        const result = await db3.all(query, params);
+        const result = await db.all(query, params);
 
         res.json({ result: result });
 
@@ -828,7 +719,7 @@ app.post('/rest/main/deletesub', async (req, res) => {
     try {
         jwt.verify(accessToken, SECRET_KEY);
 
-        const subResult = await db3.run('DELETE FROM USER_SUB WHERE seq = ?', [seq]);
+        const subResult = await db.run('DELETE FROM USER_SUB WHERE seq = ?', [seq]);
 
         if (subResult.changes > 0) res.json({ message: "삭제 성공!" });
         else res.status(404).json({ message: "대상 없음" });
@@ -892,7 +783,7 @@ app.post('/rest/main/insertsub', async (req, res) => {
         // 파라미터에서 DATETIME 함수 제거 (쿼리문 안으로 이동)
         const subParams = [userName, SERVICE_NM, MONTHLY_PRICE, nextBillingDt, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, 'Y'];
         
-        const subResult = await db3.run(subQuery, subParams);
+        const subResult = await db.run(subQuery, subParams);
         const newSubSeq = subResult.lastID;
 
         res.status(200).json({ 
@@ -959,7 +850,7 @@ app.post('/rest/main/updatesub', async (req, res) => {
         // 파라미터에서 DATETIME 함수 제거 (쿼리문 안으로 이동)
         const subParams = [SERVICE_NM, MONTHLY_PRICE, correctedNextBillingDt, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, USE_YN, SEQ, userName];
         
-        const subResult = await db3.run(subQuery, subParams);
+        const subResult = await db.run(subQuery, subParams);
         const newSubSeq = subResult.lastID;
 
         res.status(200).json({ 
