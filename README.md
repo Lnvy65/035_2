@@ -19,13 +19,8 @@ npm start (백엔드에서)
 </details>
 <details>
     <summary>류준상</summary>
-
-    이벤트 페이지 추가하기 + 웹 내에서 추가할 수 있도록
-    로그인 전 메인 건들기
-    알러트 대신 toast넣기
-    
-    
-        
+    **옮길거 : 서버 js, api , page, appRouter, sidebar.jsx**
+       
 </details>
 <details>
     <summary>최주형</summary>
