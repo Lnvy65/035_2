@@ -14,8 +14,7 @@ npm start (백엔드에서)
     우측 하단 알림 관리자일시 알림글 추가 가능한 버튼? 만들기  
     외화 계산후 구독금액 보여주기
     users 테이블 외화 컬럼 만들기
-
-    setting 페이지 수정
+    수정시 개월수 변경시 에상 결제일 개월수 바꾸기
 </details>
 <details>
     <summary>류준상</summary>
