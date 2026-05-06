@@ -5,7 +5,9 @@ import MainPage from "../pages/MainPage";
 import ManageUserPage from "../pages/ManageUserPage";
 import ProfilePage from "../pages/ProfilePage";
 import SignUpPage from "../pages/SignUpPage";
+import EventPage from "../pages/EventPage";
 import Layout from "../components/Layout";
+import AnalysisPage from "../pages/AnalysisPage";
 
 const AppRouter = () => {  
   const { user, isAuthenticated } = useAuthStore();
@@ -29,11 +31,21 @@ const AppRouter = () => {
       <Route
         path="/profile"
         element={isAuthenticated ? <Layout><ProfilePage /></Layout> : <Navigate to="/login" />}
-      />                  
+        
+      />
+      <Route
+        path="/analysis"
+        element={isAuthenticated ? <Layout><AnalysisPage /></Layout> : <Navigate to="/login" />}
+      />          
       <Route
         path="/manageUser"
         element={user?.roles === "ADMIN" ? <Layout><ManageUserPage /></Layout> : <Navigate to="/login" />}
       />        
+      {/* 수정된 부분: 이벤트 페이지 라우트 추가 */}
+      <Route
+        path="/event"
+        element={isAuthenticated ? <Layout><EventPage /></Layout> : <Navigate to="/login" />}
+      />
     </Routes>
   );
 };

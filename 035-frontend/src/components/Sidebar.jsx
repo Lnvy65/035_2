@@ -2,12 +2,14 @@ import { NavLink } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import useSidebarStore from "../store/sidebarStore";
 import styles from "../styles/Sidebar.module.css";
-import { Home, Users, Settings, Coffee, Menu, LogOut } from "lucide-react";
+import useThemeStore from "../store/themeStore";
+import { Home, Users, Settings, Coffee, Menu, LogOut, Moon, Sun, ChartColumnIncreasing } from "lucide-react";
 import { useLogout } from "../hooks/useLogout"; // 로그아웃 훅이 있다고 가정
 
 const Sidebar = () => {
   const { user } = useAuthStore();
   const { isOpen, toggleSidebar } = useSidebarStore();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   const logoutMutation = useLogout();
 
   return (
@@ -44,13 +46,26 @@ const Sidebar = () => {
             <span className={styles.menuText}>설정</span>
           </NavLink>
         </li>
+
+        <li className={styles.menuItem}>
+          <NavLink to="/analysis" className={({ isActive }) => isActive ? styles.active : ""}>
+            <ChartColumnIncreasing size={22} />
+            <span className={styles.menuText}>분석</span>
+          </NavLink>
+        </li>
       </ul>
       
       {/* 하단 사용자 정보 및 로그아웃 */}
       <div className={styles.bottomArea}>
+
+        <button onClick={toggleDarkMode} className={styles.themeToggleBtn}>
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+          {isOpen && <span className={styles.menuText}>{isDarkMode ? '라이트 모드' : '다크 모드'}</span>}
+        </button>
+
         <div className={styles.userInfo}>
           <Coffee size={20} />
-          {isOpen && <span className={styles.menuText}>{user?.kname}님</span>}
+          {isOpen && <span className={styles.menuText}>{user?.username}님</span>}
         </div>
         <button onClick={() => logoutMutation.mutate()} className={styles.logoutBtn}>
           <LogOut size={20} />

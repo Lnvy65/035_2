@@ -34,6 +34,32 @@ const storage = multer.diskStorage({
     }
 });
 
+// [수정된 부분] 이벤트 이미지 전용 업로드 경로 및 Multer 설정 추가
+const EVENT_UPLOAD_DIR = "uploads/event";
+const EVENT_UPLOAD_PATH = path.join(__dirname, EVENT_UPLOAD_DIR);
+app.use('/event_img', express.static(EVENT_UPLOAD_PATH));
+
+if (!fs.existsSync(EVENT_UPLOAD_PATH)) {
+    fs.mkdirSync(EVENT_UPLOAD_PATH, { recursive: true });
+}
+
+const eventStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, EVENT_UPLOAD_PATH); 
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        const filename = `event_${Date.now()}${ext}`;
+        cb(null, filename);
+    }
+});
+
+const eventUpload = multer({
+    storage: eventStorage,
+    limits: { fileSize: 100 * 1024 * 1024 },
+});
+// [수정된 부분] 끝
+
 const upload = multer({
     storage,
     limits: { fileSize: 100 * 1024 * 1024 },
@@ -103,18 +129,8 @@ app.post(
         ========================== */
         if (password) {
             await db.run(
-                'UPDATE users SET password = ? WHERE username = ?',
+                'UPDATE users SET password = ? WHERE user_nm = ?',
                 [password, user]
-            );
-        }
-
-        /* =========================
-           주소
-        ========================== */
-        if (address) {
-            await db.run(
-                'UPDATE users SET address = ? WHERE username = ?',
-                [address, user]
             );
         }
 
@@ -130,8 +146,6 @@ app.post(
 
         res.json({
             user,
-            address,
-            my_exchange_rate: buyingAmt,
             imgMyProfile: imgMyProfile?.filename,
             message: "개인설정저장 성공!"
         });
@@ -410,8 +424,6 @@ app.post('/rest/user/modifyuser', async (req, res) => {
     // id값 가져오기
     const { id, username, kname, roles, email, use_yn } = req.body;
 
-    console.log("#####################################", "id : ", id, "usename : ", username, "kname : ", kname, "roles : ",  roles, "email : ",  email, "use_yn : ", use_yn);
-
     if (!id) {
         return res.status(400).json({ message: "아이디를 입력해주세요." });
     }
@@ -548,7 +560,7 @@ app.post('/rest/user/adduser', async (req, res) => {
 
 
 // -----------------------------------------------------------------------------------------------------------
-//rest/signup/signup
+// /rest/signup/signup
 // -----------------------------------------------------------------------------------------------------------
 app.post('/rest/signup/signup', async (req, res) => {
     //let accessToken = req.headers['authorization'];
@@ -656,8 +668,6 @@ app.post('/rest/main/selectsublist', async (req, res) => {
     try {
         jwt.verify(accessToken, SECRET_KEY);
 
-        // 1. LEFT JOIN의 ON 절에 userName 조건을 넣어야 합니다. 
-        // 그래야 '리뷰가 없는 공지'도 결과에 포함됩니다.
         let query = `select  SEQ
                             ,SERVICE_NM
                             ,MONTHLY_PRICE
@@ -878,6 +888,77 @@ app.post('/rest/main/updatesub', async (req, res) => {
         }
         res.status(500).json({ message: "서버 내부 오류가 발생했습니다." });
     }
+});
+
+
+// -----------------------------------------------------------------------------------------------------------
+// /rest/event/list 
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/event/list', async (req, res) => { 
+    const accessToken = req.headers['authorization']; 
+    if (!accessToken) return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." }); 
+
+    try { 
+        jwt.verify(accessToken, SECRET_KEY); 
+        const events = await db.all('SELECT * FROM TB_EVENT ORDER BY SEQ DESC'); 
+        res.json({ result: events, message: "이벤트 조회 성공" }); 
+    } catch (error) { 
+        res.status(401).json({ stt: -1, message: error.message }); 
+    } 
+}); 
+
+
+// -----------------------------------------------------------------------------------------------------------
+// /rest/event/add 
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/event/add', eventUpload.single('image'), async (req, res) => { 
+    const accessToken = req.headers['authorization']; 
+    if (!accessToken) return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." }); 
+
+    const { title, content } = req.body; 
+    const imgName = req.file ? req.file.filename : null;
+
+    try { 
+        const decoded = jwt.verify(accessToken, SECRET_KEY); 
+        if (decoded.roles !== "ADMIN") return res.status(403).json({ message: "권한이 없습니다." }); 
+
+        const result = await db.run( 
+            'INSERT INTO TB_EVENT (TITLE, CONTENT, IMG_NAME) VALUES (?, ?, ?)', 
+            [title, content, imgName] 
+        ); 
+        
+        if (result.changes > 0) res.json({ message: "이벤트 추가 성공" }); 
+        else res.status(500).json({ message: "이벤트 추가 실패" }); 
+    } catch (error) { 
+        res.status(401).json({ stt: -1, message: error.message }); 
+    } 
+});
+
+
+// -----------------------------------------------------------------------------------------------------------
+// /rest/event/delete 
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/event/delete', async (req, res) => { 
+    const accessToken = req.headers['authorization']; 
+    if (!accessToken) return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." }); 
+
+    const { seq } = req.body; 
+
+    try { 
+        const decoded = jwt.verify(accessToken, SECRET_KEY); 
+        if (decoded.roles !== "ADMIN") return res.status(403).json({ message: "권한이 없습니다." }); 
+
+        const result = await db.run('DELETE FROM TB_EVENT WHERE SEQ = ?', [seq]); 
+        
+        if (result.changes > 0) res.json({ message: "이벤트 삭제 성공" }); 
+        else res.status(404).json({ message: "삭제할 이벤트를 찾지 못했습니다." }); 
+    } catch (error) { 
+        res.status(401).json({ stt: -1, message: error.message }); 
+    } 
+}); 
+
+app.listen(PORT, () => {
+    console.log(`서버가 실행되었습니다: http://localhost:${PORT}`);
 });
 
 

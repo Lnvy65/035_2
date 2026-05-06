@@ -59,28 +59,6 @@ export const selectsubchartApi = async ({userName}) => {
   return response.data;
 };
 
-
-// export const insertSubApi = async ({ userName, SERVICE_NM, MONTHLY_PRICE, ANCHOR_DAY, BILLING_CYCLE, CATEGORY }) => {
-//   // 1. FormData 생성
-//   const formData = new FormData();
-
-//   // 2. 데이터 하나씩 추가
-//   formData.append("USER_NM", userName);
-//   formData.append("SERVICE_NM", SERVICE_NM);
-//   formData.append("MONTHLY_PRICE", MONTHLY_PRICE);
-//   formData.append("ANCHOR_DAY", ANCHOR_DAY);
-//   formData.append("BILLING_CYCLE", BILLING_CYCLE);
-//   formData.append("CATEGORY", CATEGORY);
-
-//   const response = await api.post("/rest/main/insertsub", formData, {
-//     headers: {
-//       "Content-Type": "application/json", // JSON 형식 명시
-//     }
-//   });
-
-//   return response.data;
-// };
-
 // api/mainpageApi.js 수정
 export const insertSubApi = async (subData) => {
   // FormData를 생성하지 않고, 객체를 그대로 넘깁니다.

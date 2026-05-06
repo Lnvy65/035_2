@@ -3,13 +3,13 @@
   top: 0;
   left: 0;
   height: 100vh;
-  background-color: #ffffff;
+  background-color: var(--sidebar-bg);
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid var(--border-color);
 }
 /* 사이드바 너비 설정 */
 .open { width: 280px; }
@@ -27,7 +27,7 @@
 .burgerButton {
   background: none;
   border: none;
-  color: #000;
+  color: var(--text-primary);
   cursor: pointer;
   display: flex;
   padding: 0;
@@ -58,7 +58,7 @@
   align-items: center;
   height: 52px;
   text-decoration: none;
-  color: #444;
+  color: var(--text-primary);
   margin: 4px 10px; 
   border-radius: 12px;
   transition: background-color 0.2s ease;
@@ -76,8 +76,8 @@
 
 .menuItem a:hover, 
 .menuItem a.active {
-  background-color: #f2f2f2;
-  color: #000;
+  background-color: var(--hover-bg);
+  color: var(--text-primary);
 }
 
 .iconWrapper {
@@ -112,7 +112,7 @@
 /* 하단 영역 (프로필/로그아웃) */
 .bottomArea {
   padding: 15px 20px;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -124,16 +124,16 @@
   align-items: flex-start;
 }
 
-.userInfo, .logoutBtn {
+.userInfo, .logoutBtn, .themeToggleBtn {
   display: flex;
   align-items: center;
   gap: 20px;
-  color: #555;
+  color: var(--text-secondary);
   white-space: nowrap;
   transition: color 0.2s ease;
 }
 
-.logoutBtn {
+.logoutBtn, .themeToggleBtn {
   background: none;
   border: none;
   cursor: pointer;
@@ -141,6 +141,9 @@
   width: 100%;
 }
 
+.themeToggleBtn:hover {
+  color: #646cff;
+}
 .logoutBtn:hover {
   color: #ff4d4d;
 }

@@ -8,18 +8,18 @@
 .header {
   font-size: 24px;
   margin-bottom: 10px;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .welcomeText {
-  color: #555;
+  color: var(--text-secondary);
   margin-bottom: 20px;
 }
 
 .divider {
   margin: 20px 0;
   border: 0;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--border-color);
   width: 100%;
 }
 
@@ -32,7 +32,7 @@
   margin-bottom: 15px;
   border-left: 4px solid #007bff;
   padding-left: 10px;
-  color: #222;
+  color: var(--text-primary);
 }
 
 .inputGroup {
@@ -46,14 +46,14 @@
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: #444;
+  color: var(--text-secondary);
 }
 
 .input {
   width: 300px;
   padding: 10px 12px;
   border-radius: 6px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   transition: border-color 0.2s;
 }
 
@@ -69,12 +69,12 @@
 
 .currencyUnit {
   font-weight: bold;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .helperText {
   font-size: 12px;
-  color: #888;
+  color: var(--text-secondary);
   margin-top: 6px;
 }
 
