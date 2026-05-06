@@ -103,18 +103,8 @@ app.post(
         ========================== */
         if (password) {
             await db.run(
-                'UPDATE users SET password = ? WHERE username = ?',
+                'UPDATE users SET password = ? WHERE user_nm = ?',
                 [password, user]
-            );
-        }
-
-        /* =========================
-           주소
-        ========================== */
-        if (address) {
-            await db.run(
-                'UPDATE users SET address = ? WHERE username = ?',
-                [address, user]
             );
         }
 
@@ -130,8 +120,6 @@ app.post(
 
         res.json({
             user,
-            address,
-            my_exchange_rate: buyingAmt,
             imgMyProfile: imgMyProfile?.filename,
             message: "개인설정저장 성공!"
         });
