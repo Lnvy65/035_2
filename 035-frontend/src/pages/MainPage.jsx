@@ -166,7 +166,7 @@ const MainPage = () => {
                 size="small" variant="outlined" placeholder="서비스 이름 검색..." 
                 value={searchText} onChange={(e) => setSearchText(e.target.value)} 
                 InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: '#999' }} /></InputAdornment>) }}
-                sx={{ width: '220px', '& .MuiOutlinedInput-root': { borderRadius: '8px', height: '36px', backgroundColor: '#fff' } }}
+                sx={{ width: '220px', '& .MuiOutlinedInput-root': { borderRadius: '8px', height: '36px'} }}
               />
               <Button variant="outlined" size="small" onClick={() => refetchSubList()} sx={{ borderRadius: '8px', height: '36px', textTransform: 'none', borderColor: '#e5e7eb', color: '#666', minWidth: '80px' }}>새로고침</Button>
               <button className={styles.addButton} onClick={() => setOpenCreate(true)}><span style={{ marginRight: '4px' }}>+</span> 추가</button>
@@ -176,6 +176,7 @@ const MainPage = () => {
                 onClose={() => setOpenCreate(false)} 
                 onSave={(data) => createMutation.mutate(data)}
                 isLoading={createMutation.isPending}
+                existingSubscriptions={subListData}
               />
               
               <EditSubModal 

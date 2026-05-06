@@ -25,7 +25,7 @@ const INITIAL_STATE = {
   CATEGORY: "",
 };
 
-const CreateSubModal = ({ open, onClose, onSave, isLoading }) => {
+const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscriptions = []}) => {
   const user = useAuthStore((state) => state.user);
   const [form, setForm] = useState(INITIAL_STATE);
 
@@ -35,6 +35,12 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading }) => {
   };
 
   const handleSave = () => {
+    const isDuplicate = existingSubscriptions.some(sub => sub.SERVICE_NM === form.SERVICE_NM);
+    if (isDuplicate) {
+      const isConfirmed = window.confirm("이미 등록된 서비스입니다. 그래도 추가하시겠습니까?");
+      if (!isConfirmed) return;
+    }
+
     const priceNum = String(form.MONTHLY_PRICE).replace(/,/g, "");
     onSave({ 
       ...form, 

@@ -72,7 +72,7 @@ const ManageUserPage = () => {
   /* --------------------------------------------------------------------------------
    조회
   -------------------------------------------------------------------------------- */
-  const { data = [], isLoading, error, refetch, isFetching,} = useQuery(
+  const { data = [], isLoading, refetch, isFetching,} = useQuery(
     {    
       queryKey: ["alluser", searchText],
       queryFn: () => allUserApi({ keyword: searchText }),
@@ -236,7 +236,7 @@ const ManageUserPage = () => {
             },
           }}
           disableRowSelectionOnClick
-          processRowUpdate={(newRow, oldRow) => {
+          processRowUpdate={(newRow) => {
             modifyUserMutation.mutate({
               id: newRow.id,
               username: newRow.username,
