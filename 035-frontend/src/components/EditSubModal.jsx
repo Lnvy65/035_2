@@ -10,7 +10,7 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
     if (editData && open) {
       // 숫자 금액에 콤마 처리
       const formattedPrice = editData.MONTHLY_PRICE ? Number(editData.MONTHLY_PRICE).toLocaleString() : "";
-      setFormData({ ...editData, MONTHLY_PRICE: formattedPrice });
+      setFormData({ ...editData, MONTHLY_PRICE: formattedPrice, SHARED_USERS: 1 });
     }
   }, [editData, open]);
 
@@ -45,11 +45,21 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
     setFormData({ ...formData, NEXT_BILLING_DT: finalDate, ANCHOR_DAY: matchedAnchorDay });
   };
 
-  const isUnchanged = JSON.stringify({ ...editData, MONTHLY_PRICE: editData?.MONTHLY_PRICE?.toLocaleString() || "" }) === JSON.stringify(formData);
+  const { SHARED_USERS, ...compareData } = formData;
+  const isUnchanged = JSON.stringify({ ...editData, MONTHLY_PRICE: editData?.MONTHLY_PRICE?.toLocaleString() || "" }) === JSON.stringify(compareData) && (SHARED_USERS === 1 || !SHARED_USERS);
 
   const handleSaveClick = () => {
-    const priceWithoutComma = String(formData.MONTHLY_PRICE).replace(/,/g, "");
-    onSave({ ...formData, MONTHLY_PRICE: Number(priceWithoutComma) });
+    const priceWithoutComma = Number(String(formData.MONTHLY_PRICE).replace(/,/g, ""));
+    const users = Number(formData.SHARED_USERS) || 1;
+    const finalPrice = Math.floor(priceWithoutComma / users);
+
+    onSave({ ...compareData, MONTHLY_PRICE: finalPrice });
+  };
+
+  const getCalculatedPrice = () => {
+    const price = Number(String(formData.MONTHLY_PRICE).replace(/,/g, ""));
+    const users = Number(formData.SHARED_USERS) || 1;
+    return price > 0 && users > 1 ? Math.floor(price / users).toLocaleString() : "";
   };
 
   return (
@@ -66,6 +76,17 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
               setFormData({...formData, MONTHLY_PRICE: rawValue ? Number(rawValue).toLocaleString() : ""});
             }}
           />
+
+          <TextField 
+            label="공유 인원" 
+            type="number"
+            fullWidth 
+            value={formData.SHARED_USERS || 1} 
+            onChange={(e) => setFormData({...formData, SHARED_USERS: Math.max(1, parseInt(e.target.value) || 1)})}
+            helperText={getCalculatedPrice() ? `수정될 1인당 청구 금액: ${getCalculatedPrice()}원` : "가격을 수정하고 인원을 나누려면 입력하세요."}
+            inputProps={{ min: 1 }}
+          />
+
           <TextField label="결제 예정일" fullWidth value={formData.NEXT_BILLING_DT || ''} placeholder="8자리 또는 6자리로 입력" onChange={handleDateChange} onBlur={handleDateBlur} inputProps={{ maxLength: 10 }} />
           
           <TextField select label="정기 결제일" fullWidth value={formData.ANCHOR_DAY || ''} 

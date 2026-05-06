@@ -23,6 +23,7 @@ const INITIAL_STATE = {
   ANCHOR_DAY: "",
   BILLING_CYCLE: "",
   CATEGORY: "",
+  SHARED_USERS: 1,
 };
 
 const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscriptions = []}) => {
@@ -41,13 +42,27 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
       if (!isConfirmed) return;
     }
 
-    const priceNum = String(form.MONTHLY_PRICE).replace(/,/g, "");
+    // const priceNum = String(form.MONTHLY_PRICE).replace(/,/g, "");
+    //임시 - 공유 사용자 수에 따른 가격 분할 로직 추가
+    const originalPrice = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
+    const users = Number(form.SHARED_USERS) || 1;
+    const priceNum = Math.round(originalPrice / users);
+
+    const { SHARED_USERS, ...saveData } = form;
+
+
     onSave({ 
-      ...form, 
-      MONTHLY_PRICE: priceNum, 
-      userName: user?.username 
+      ...saveData, 
+      MONTHLY_PRICE: priceNum,
+      userName: user?.username
     });
     setForm(INITIAL_STATE);
+    // onSave({ 
+    //   ...form, 
+    //   MONTHLY_PRICE: priceNum, 
+    //   userName: user?.username 
+    // });
+    // setForm(INITIAL_STATE);
   };
 
   // 입력 핸들러 공통화
@@ -56,8 +71,18 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
     if (field === 'MONTHLY_PRICE') {
       const rawValue = value.replace(/[^0-9]/g, "");
       value = rawValue ? Number(rawValue).toLocaleString() : "";
+    } 
+    // 공유 사용자 수는 최소 1명으로 제한
+    else if (field === 'SHARED_USERS') {
+      value = Math.max(1, Number(value));
     }
     setForm(prev => ({ ...prev, [field]: value }));
+  };
+
+  const getCalculatedPrice = () => {
+    const price = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
+    const users = Number(form.SHARED_USERS) || 1;
+    return price > 0 && users > 1 ? Math.floor(price / users).toLocaleString() : "";
   };
 
   return (
@@ -91,6 +116,17 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             onChange={handleChange('MONTHLY_PRICE')}
             InputProps={{ endAdornment: <InputAdornment position="end">원</InputAdornment> }} 
           />
+          
+          <TextField 
+            label="공유 인원" 
+            type="number"
+            fullWidth 
+            value={form.SHARED_USERS} 
+            onChange={handleChange('SHARED_USERS')}
+            helperText={getCalculatedPrice() ? `1인당 청구 금액: ${getCalculatedPrice()}원` : "나 혼자 사용하는 경우 1을 입력하세요."}
+            inputProps={{ min: 1 }}
+          />
+
           <TextField select label="정기 결제일" fullWidth value={form.ANCHOR_DAY} onChange={handleChange('ANCHOR_DAY')}>
             {DAYS.map(d => <MenuItem key={d} value={d}>{d === 31 ? "말일" : `${d}일`}</MenuItem>)}
           </TextField>
@@ -106,7 +142,7 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
           variant="contained" 
           onClick={handleSave}
           disabled={!form.SERVICE_NM || !form.MONTHLY_PRICE || isLoading}
-          sx={{ bgcolor: '#000' }}
+          sx={{ bgcolor: '#3b82f6' }}
         >
           저장하기
         </Button>
