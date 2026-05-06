@@ -31,6 +31,7 @@ export const useLogin = () => {
       } else {
         // 그 외 서버 에러 등
         alert("로그인 중 오류가 발생했습니다.");
+        alert(`Error Code: ${status || "Unknown"}, Message: ${serverMessage || "No message"}`);
       }
 
       console.error("Login Error Detail:", error);

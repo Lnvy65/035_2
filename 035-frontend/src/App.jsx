@@ -1,3 +1,4 @@
+import './index.css';
 import { useEffect, useMemo } from "react";
 import api from "./api/axios";
 import useAuthStore from "./store/authStore";
@@ -7,7 +8,7 @@ import styles from "./styles/AppLayout.module.css";
 import useSidebarStore from "./store/sidebarStore";
 import useThemeStore from "./store/themeStore";
 import { ThemeProvider, createTheme, CssBaseline } from "@mui/material";
-import './index.css';
+
 
 
 function App() {
@@ -67,7 +68,6 @@ if (isLoading) {
 
 return (
   <ThemeProvider theme={theme}>
-    <CssBaseline />
       <div className={styles.layout}>
         <div className={styles.body}>
           {isAuthenticated && (

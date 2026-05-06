@@ -100,6 +100,3 @@ export const updateProfileApi = async ({user, password, buyingAmt, address, imgM
 
   return response.data;
 };
-
-
-
