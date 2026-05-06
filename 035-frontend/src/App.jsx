@@ -32,6 +32,12 @@ function App() {
       createTheme({
         palette: {
           mode: isDarkMode ? "dark" : "light",
+          ...(isDarkMode && {
+            background: {
+              default: '#313338', 
+              paper: '#2b2d31', 
+            },
+          }),
         },
       }),
     [isDarkMode]
