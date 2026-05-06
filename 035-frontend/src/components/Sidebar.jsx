@@ -3,7 +3,7 @@ import useAuthStore from "../store/authStore";
 import useSidebarStore from "../store/sidebarStore";
 import styles from "../styles/Sidebar.module.css";
 import useThemeStore from "../store/themeStore";
-import { Home, Users, Settings, Coffee, Menu, LogOut, Moon, Sun, ChartColumnIncreasing } from "lucide-react";
+import { Home, Users, Settings, Coffee, Menu, LogOut, Moon, Sun, ChartColumnIncreasing, Gift } from "lucide-react"; // 수정됨: Gift 아이콘 임포트 추가
 import { useLogout } from "../hooks/useLogout"; // 로그아웃 훅이 있다고 가정
 
 const Sidebar = () => {
@@ -39,6 +39,15 @@ const Sidebar = () => {
             </NavLink>
           </li>
         )}
+
+        {/* 수정됨: 이벤트 페이지로 이동하는 메뉴 항목 추가 시작 */}
+        <li className={styles.menuItem}>
+          <NavLink to="/event" className={({ isActive }) => isActive ? styles.active : ""}>
+            <Gift size={22} />
+            <span className={styles.menuText}>이벤트</span>
+          </NavLink>
+        </li>
+        {/* 수정됨: 이벤트 페이지로 이동하는 메뉴 항목 추가 끝 */}
 
         <li className={styles.menuItem}>
           <NavLink to="/profile" className={({ isActive }) => isActive ? styles.active : ""}>
