@@ -12,6 +12,18 @@ export const selectsumApi = async ({userName}) => {
 };
 
 
+export const selectmonthlysumApi = async ({userName}) => {  
+  
+  const response = await api.post(
+    "/rest/main/selectmonthlysum",
+    { "userName" : userName },
+    { withCredentials: true }
+  );
+
+  return response.data;
+};
+
+
 export const selectdateApi = async ({userName}) => {  
   
   const response = await api.post(
@@ -79,4 +91,15 @@ export const updateSubApi = async (subData) => {
   });
 
   return response.data;
+};
+
+export const selectcurnmApi = async ({}) => {  
+  
+  const response = await api.post(
+    "/rest/main/selectcurnm",
+    {},
+    { withCredentials: true }
+  );
+
+  return response.data.result;
 };

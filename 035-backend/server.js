@@ -591,7 +591,7 @@ app.post('/rest/signup/signup', async (req, res) => {
 
 
 // -----------------------------------------------------------------------------------------------------------
-// /rest/main/selectnotice
+// /rest/main/selectsum
 // -----------------------------------------------------------------------------------------------------------
 app.post('/rest/main/selectsum', async (req, res) => {
     let accessToken = req.headers['authorization'];
@@ -604,7 +604,48 @@ app.post('/rest/main/selectsum', async (req, res) => {
 
         // 1. LEFT JOIN의 ON 절에 userName 조건을 넣어야 합니다. 
         // 그래야 '리뷰가 없는 공지'도 결과에 포함됩니다.
-        let query = `select sum(MONTHLY_PRICE) as sum, count(*) as count from USER_SUB where USER_NM = ? and USE_YN = 'Y'`;
+        let query = `	select  round(sum(us.MONTHLY_PRICE * er.exchange_rate)) as sum
+                               ,count(*) as count
+                          from user_sub us
+                      left join (select * from exchange_rate group by currency HAVING MAX(created_at)) er on us.currency = er.currency
+                          WHERE us.USE_YN  = 'Y'
+                            AND us.USER_NM = ?
+                    ;`;
+        
+        // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
+        let params = [userName];
+
+        const result = await db.all(query, params);
+
+        res.json({ result: result });
+
+    } catch (error) {
+        res.status(401).json({ message: "인증 실패: " + error.message });
+    }
+});
+
+
+// -----------------------------------------------------------------------------------------------------------
+// /rest/main/selectmonthlysum
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/main/selectmonthlysum', async (req, res) => {
+    let accessToken = req.headers['authorization'];
+    if (!accessToken) return res.status(401).json({ message: "액세스토큰이 없습니다." });
+
+    const { userName } = req.body; 
+
+    try {
+        jwt.verify(accessToken, SECRET_KEY);
+
+        // 1. LEFT JOIN의 ON 절에 userName 조건을 넣어야 합니다. 
+        // 그래야 '리뷰가 없는 공지'도 결과에 포함됩니다.
+        let query = `	select round(sum(us.MONTHLY_PRICE * er.exchange_rate)) as sum
+                          from user_sub us
+                      left join (select * from exchange_rate group by currency HAVING MAX(created_at)) er on us.currency = er.currency
+                          WHERE strftime('%Y-%m', NEXT_BILLING_DT) = strftime('%Y-%m', 'now', 'localtime')
+                            AND us.USE_YN  = 'Y'
+                            AND us.USER_NM = ?
+                    ;`;
         
         // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
         let params = [userName];
@@ -668,19 +709,22 @@ app.post('/rest/main/selectsublist', async (req, res) => {
     try {
         jwt.verify(accessToken, SECRET_KEY);
 
-        let query = `select  SEQ
-                            ,SERVICE_NM
-                            ,MONTHLY_PRICE
-                            ,NEXT_BILLING_DT
-                            ,ANCHOR_DAY
-                            ,BILLING_CYCLE
-                            ,CATEGORY
-                            ,USE_YN
-                            ,CREATE_DT
-                            ,UPDATE_DT
-                       from USER_SUB
-                      where USER_NM = ?
-                   ORDER BY SEQ DESC`;
+        let query = `	select DISTINCT  
+                                us.SEQ
+                               ,us.USER_NM
+                               ,us.SERVICE_NM
+                               ,us.MONTHLY_PRICE
+                               ,us.NEXT_BILLING_DT
+                               ,us.ANCHOR_DAY
+                               ,us.BILLING_CYCLE
+                               ,us.CATEGORY
+                               ,us.USE_YN
+                               ,us.CREATE_DT
+                               ,us.UPDATE_DT
+                               ,er.CUR_NM
+                          from user_sub us
+                     left join exchange_rate er on us.currency = er.currency
+                         WHERE us.USER_NM = ?`;
         
         // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
         let params = [userName];
@@ -758,7 +802,7 @@ app.post('/rest/main/insertsub', async (req, res) => {
     let accessToken = req.headers['authorization'];
     if (!accessToken) return res.status(400).json({ message: "토큰이 없습니다." });
 
-    const { userName, SERVICE_NM, MONTHLY_PRICE, ANCHOR_DAY, BILLING_CYCLE, CATEGORY } = req.body;
+    const { userName, SERVICE_NM, MONTHLY_PRICE, CUR_NM, ANCHOR_DAY, BILLING_CYCLE, CATEGORY } = req.body;
 
     try {
         jwt.verify(accessToken, SECRET_KEY);
@@ -798,12 +842,12 @@ app.post('/rest/main/insertsub', async (req, res) => {
         // 1. USER_SUB 테이블 삽입
         const subQuery = `
             INSERT INTO USER_SUB (
-                USER_NM, SERVICE_NM, MONTHLY_PRICE, NEXT_BILLING_DT, 
+                USER_NM, SERVICE_NM, MONTHLY_PRICE, CURRENCY, NEXT_BILLING_DT,
                 ANCHOR_DAY, BILLING_CYCLE, CATEGORY, USE_YN, create_dt
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%d', 'now', 'localtime'))
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, strftime('%Y-%m-%d', 'now', 'localtime'))
         `; //%Y-%m-%d %H:%M:%S
         // 파라미터에서 DATETIME 함수 제거 (쿼리문 안으로 이동)
-        const subParams = [userName, SERVICE_NM, MONTHLY_PRICE, nextBillingDt, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, 'Y'];
+        const subParams = [userName, SERVICE_NM, MONTHLY_PRICE, CUR_NM, nextBillingDt, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, 'Y'];
         
         const subResult = await db.run(subQuery, subParams);
         const newSubSeq = subResult.lastID;
@@ -831,7 +875,7 @@ app.post('/rest/main/updatesub', async (req, res) => {
     let accessToken = req.headers['authorization'];
     if (!accessToken) return res.status(400).json({ message: "토큰이 없습니다." });
 
-    const { userName, SERVICE_NM, MONTHLY_PRICE, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, SEQ, NEXT_BILLING_DT, USE_YN } = req.body;
+    const { userName, SERVICE_NM, MONTHLY_PRICE, cur_nm, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, SEQ, NEXT_BILLING_DT, USE_YN } = req.body;
 
     try {
         jwt.verify(accessToken, SECRET_KEY);
@@ -860,6 +904,7 @@ app.post('/rest/main/updatesub', async (req, res) => {
             UPDATE USER_SUB
                SET  SERVICE_NM = ?
                    ,MONTHLY_PRICE = ?
+                   ,CURRENCY = ?
                    ,NEXT_BILLING_DT = ?
                    ,ANCHOR_DAY = ?
                    ,BILLING_CYCLE = ?
@@ -870,7 +915,7 @@ app.post('/rest/main/updatesub', async (req, res) => {
                AND USER_NM = ?
         `; //%Y-%m-%d %H:%M:%S
         // 파라미터에서 DATETIME 함수 제거 (쿼리문 안으로 이동)
-        const subParams = [SERVICE_NM, MONTHLY_PRICE, correctedNextBillingDt, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, USE_YN, SEQ, userName];
+        const subParams = [SERVICE_NM, MONTHLY_PRICE, cur_nm, correctedNextBillingDt, ANCHOR_DAY, BILLING_CYCLE, CATEGORY, USE_YN, SEQ, userName];
         
         const subResult = await db.run(subQuery, subParams);
         const newSubSeq = subResult.lastID;
@@ -957,9 +1002,33 @@ app.post('/rest/event/delete', async (req, res) => {
     } 
 }); 
 
-app.listen(PORT, () => {
-    console.log(`서버가 실행되었습니다: http://localhost:${PORT}`);
+
+
+// -----------------------------------------------------------------------------------------------------------
+// /rest/main/selectcurnm
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/main/selectcurnm', async (req, res) => {
+    let accessToken = req.headers['authorization'];
+    if (!accessToken) return res.status(401).json({ message: "액세스토큰이 없습니다." });
+
+    try {
+        jwt.verify(accessToken, SECRET_KEY);
+
+        let query = `select distinct currency, cur_nm from exchange_rate`;
+
+        const result = await db.all(query);
+
+        res.json({ result: result });
+
+    } catch (error) {
+        res.status(401).json({ message: "인증 실패: " + error.message });
+    }
 });
+
+
+
+
+
 
 
 

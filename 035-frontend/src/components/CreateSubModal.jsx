@@ -4,6 +4,9 @@ import {
   TextField, Box, InputAdornment, Button, MenuItem 
 } from "@mui/material";
 import useAuthStore from "../store/authStore";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { selectcurnmApi } from "../api/mainpageApi";
+
 
 // 상수 데이터 분리
 const PRESET_SERVICES = [
@@ -20,6 +23,7 @@ const CYCLES = [1, 3, 6, 12];
 const INITIAL_STATE = {
   SERVICE_NM: "",
   MONTHLY_PRICE: "",
+  CUR_NM: "",
   ANCHOR_DAY: "",
   BILLING_CYCLE: "",
   CATEGORY: "",
@@ -28,6 +32,8 @@ const INITIAL_STATE = {
 
 const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscriptions = []}) => {
   const user = useAuthStore((state) => state.user);
+  const userName = user?.username;
+
   const [form, setForm] = useState(INITIAL_STATE);
 
   const handleClose = () => {
@@ -85,6 +91,13 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
     return price > 0 && users > 1 ? Math.floor(price / users).toLocaleString() : "";
   };
 
+  const { data: curNMData = [], isLoading: iscurNMLoading, refetch: refetchCurNM } = useQuery({
+    queryKey: ["selectcurNM"],
+    queryFn: () => selectcurnmApi({}),
+  });
+
+   const currencies = Array.isArray(curNMData) ? curNMData : [];
+
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="xs">
       <DialogTitle sx={{ fontWeight: 'bold' }}>새로운 구독 추가</DialogTitle>
@@ -114,8 +127,32 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             fullWidth 
             value={form.MONTHLY_PRICE} 
             onChange={handleChange('MONTHLY_PRICE')}
-            InputProps={{ endAdornment: <InputAdornment position="end">원</InputAdornment> }} 
+            InputProps={{ endAdornment: <InputAdornment position="end"></InputAdornment> }} 
           />
+          
+          <TextField
+            select // 드롭다운 형식으로 변환
+            label="통화"
+            fullWidth
+            value={form.CUR_NM}
+            onChange={handleChange('CUR_NM')}
+            SelectProps={{
+              MenuProps: {
+                PaperProps: {
+                  style: {
+                    maxHeight: 300, // ✅ 최대 높이를 300px로 제한 (스크롤 생성)
+                    width: 250,     // ✅ 너비 고정
+                  },
+                },
+              },
+            }}
+          >
+            {currencies.map((option) => (
+              <MenuItem key={option.currency} value={option.currency}>
+                {option.cur_nm} ({option.currency})
+              </MenuItem>
+            ))}
+          </TextField>
           
           <TextField 
             label="공유 인원" 
@@ -127,7 +164,23 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             inputProps={{ min: 1 }}
           />
 
-          <TextField select label="정기 결제일" fullWidth value={form.ANCHOR_DAY} onChange={handleChange('ANCHOR_DAY')}>
+          <TextField 
+            select 
+            label="정기 결제일" 
+            fullWidth 
+            value={form.ANCHOR_DAY} 
+            onChange={handleChange('ANCHOR_DAY')}
+            SelectProps={{
+              MenuProps: {
+                PaperProps: {
+                  style: {
+                    maxHeight: 300, // ✅ 최대 높이를 300px로 제한 (스크롤 생성)
+                    width: 250,     // ✅ 너비 고정
+                  },
+                },
+              },
+            }}
+          >
             {DAYS.map(d => <MenuItem key={d} value={d}>{d === 31 ? "말일" : `${d}일`}</MenuItem>)}
           </TextField>
           <TextField select label="결제 주기" fullWidth value={form.BILLING_CYCLE} onChange={handleChange('BILLING_CYCLE')}>

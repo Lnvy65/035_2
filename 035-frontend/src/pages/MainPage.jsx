@@ -1,6 +1,6 @@
 import useAuthStore from "../store/authStore";
 import styles from '../styles/MainPage.module.css';
-import { selectsumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi } from "../api/mainpageApi";
+import { selectsumApi, selectmonthlysumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi } from "../api/mainpageApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
@@ -20,6 +20,7 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const QUERY_KEYS = {
   all: ["subscription"],
   sum: (username) => ["subscription", "sum", username],
+  monthlySum: (username) => ["subscription", "monthlySum", username],
   date: (username) => ["subscription", "date", username],
   list: (username) => ["subscription", "list", username],
   chart: (username) => ["subscription", "chart", username],
@@ -43,7 +44,14 @@ const MainPage = () => {
     queryFn: () => selectsumApi({ userName }),
     enabled: !!userName,
   });
-  const sumresult = sumData?.result?.[0] || { sum: 0, count: 0 };
+  const totalSumResult = sumData?.result?.[0] || { sum: 0, count: 0 };
+
+  const { data: monthlySumResultsumData, isLoading: isMonthlySumLoading } = useQuery({
+  queryKey: QUERY_KEYS.monthlySum(userName),
+  queryFn: () => selectmonthlysumApi({ userName }),
+  enabled: !!userName,
+  });
+  const monthlySumResult = monthlySumResultsumData?.result?.[0] || { sum: 0, count: 0 };
 
   const { data: dateData, isLoading: isdateLoading } = useQuery({
     queryKey: QUERY_KEYS.date(userName),
@@ -109,12 +117,10 @@ const MainPage = () => {
     setOpenEdit(false);
     setTimeout(() => setEditData(null), 200); // 애니메이션 종료 후 초기화
   };
-
+ 
   const filteredRows = useMemo(() => {
     if (!subListData.length) return [];
-    return subListData.filter((row) => 
-      row.SERVICE_NM.toLowerCase().includes(searchText.toLowerCase())
-    );
+    return subListData.filter((row) => row.SERVICE_NM.toLowerCase().includes(searchText.toLowerCase()));
   }, [subListData, searchText]);
 
   const chartOptions = useMemo(() => ({
@@ -133,26 +139,36 @@ const MainPage = () => {
     }],
   }), [chartResult]);
 
+  // 현재 월 이름을 한글로 가져오기
+  const today = new Date();
+  const monthNameKR = today.toLocaleString('ko-KR', { month: 'long' });
+
   return (
     <div className={styles.container}>
       <div className={styles.header}>
         <h2>안녕하세요, {userName}님!</h2>
-        <p style={{color: '#817d7d'}}>이번 달 구독 내역을 확인해 보세요.</p>
+        <p style={{color: '#817d7d'}}>구독 내역을 확인해 보세요.</p>
       </div>
 
       <div className={styles.summarySection}>
+        {/* 여기 고쳐야됨 */}
+        <div className={`${styles.card} ${styles.summaryCard}`}>
+          <p style={{color: '#817d7d'}}>활성화된 {monthNameKR} 구독 금액</p>
+          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{monthlySumResult.sum?.toLocaleString() || 0}원</p>
+        </div>
+        {/* 여기 고쳐야됨 */}
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>활성화된 총 구독 금액</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{sumresult.sum?.toLocaleString() || 0}원</p>
+          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{totalSumResult.sum?.toLocaleString() || 0}원</p>
         </div>
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>활성화된 구독 수</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{sumresult.count || 0}개</p>
+          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{totalSumResult.count || 0}개</p>
         </div>
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>다음 결제 예정</p>
           <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>
-            {dateresult.NEXT_BILLING_DT ? `${dateresult.SERVICE_NM} - ${dateresult.NEXT_BILLING_DT}` : '정보 없음'}
+            {dateresult.NEXT_BILLING_DT ? `${dateresult.SERVICE_NM} ${dateresult.NEXT_BILLING_DT}` : '정보 없음'}
           </p>
         </div>
       </div>

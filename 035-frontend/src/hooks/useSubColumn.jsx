@@ -21,8 +21,10 @@ export const useSubColumns = (handleDelete) => {
       width: 100, 
       headerAlign: "center", 
       align: "center",
-      valueFormatter: (value) => value ? `${value.toLocaleString()}원` : "0원"
+      valueFormatter: (value) => value ? `${value.toLocaleString()}` : ""
     },
+    { field: "cur_nm", headerName: "통화", width: 80, headerAlign: "center", align: "center" },
+    { field: "NEXT_BILLING_DT", headerName: "결제 예정일", width: 100, editable: false, headerAlign: "center", align: "center" },
     { 
       field: "ANCHOR_DAY", 
       headerName: "결제일", 
@@ -31,7 +33,7 @@ export const useSubColumns = (handleDelete) => {
       align: "center",
       valueFormatter: (value) => {
         if (!value) return "-";
-        return value === 31 || value === "31" ? "매월 말일" : `매월 ${value}일`;
+        return value === 31 || value === "31" ? "말일" : `${value}일`;
       }
     },
     { 
@@ -62,8 +64,8 @@ export const useSubColumns = (handleDelete) => {
         );
       }
     },
-    { field: "CREATE_DT", headerName: "생성일", width: 150, align: "center", headerAlign: "center" },
-    { field: "UPDATE_DT", headerName: "수정일", width: 150, align: "center", headerAlign: "center" },
+    { field: "CREATE_DT", headerName: "생성일", width: 100, align: "center", headerAlign: "center" },
+    { field: "UPDATE_DT", headerName: "수정일", width: 100, align: "center", headerAlign: "center" },
     {
       field: "actions",
       headerName: "삭제",
