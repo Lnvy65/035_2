@@ -18,28 +18,27 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
   // editData가 변경될 때마다 formData를 업데이트하여 초기값 설정 (curNMData가 로드된 후 매핑)
   const currencies = Array.isArray(curNMData) ? curNMData : [];
 
-  // editData가 변경될 때마다 formData를 업데이트하여 초기값 설정 (curNMData가 로드된 후 매핑)
+  // editData가 변경될 때마다 formData를 업데이트하여 초기값 설정
   useEffect(() => {
-  if (editData && open && curNMData.length > 0) {
-      // 1. 그리드에서 넘어온 한글 값 (예: "한국 원")
-      const initialKoreanName = editData.cur_nm; 
+    if (editData && open) {
+      // DB에서 넘어온 영어 통화 코드를 직접 사용
+      const currencyCode = editData.CURRENCY || "KRW";
 
-      // 2. 전체 리스트(curNMData)에서 한글 이름이 일치하는 항목 찾기
-      const matchedCurrency = curNMData.find(item => item.cur_nm === initialKoreanName);
-
-      // 3. 일치하는 코드가 있으면 영어 코드(KRW)를 사용, 없으면 그대로 사용
-      const currencyCode = matchedCurrency ? matchedCurrency.currency : initialKoreanName;
-
-      const formattedPrice = editData.MONTHLY_PRICE ? Number(editData.MONTHLY_PRICE).toLocaleString() : "";
+      let formattedPrice = "";
+      if (editData.MONTHLY_PRICE != null && editData.MONTHLY_PRICE !== "") {
+        const parts = String(editData.MONTHLY_PRICE).split('.');
+        parts[0] = Number(parts[0]).toLocaleString();
+        formattedPrice = parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+      }
 
       setFormData({ 
         ...editData, 
-        cur_nm: currencyCode, // 이제 상태값은 "KRW" 같은 영어 코드가 됨
+        cur_nm: currencyCode, 
         MONTHLY_PRICE: formattedPrice, 
         SHARED_USERS: 1 
       });
     }
-  }, [editData, open, curNMData]); // curNMData가 로드된 후 매핑하기 위해 의존성 추가
+  }, [editData, open]);
 
   // 초기값이 설정되기 전까지는 렌더링하지 않도록 처리
   if (!formData) return null;
@@ -135,7 +134,13 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
   const handleSaveClick = () => {
     const priceWithoutComma = Number(String(formData.MONTHLY_PRICE).replace(/,/g, ""));
     const users = Number(formData.SHARED_USERS) || 1;
-    const finalPrice = Math.floor(priceWithoutComma / users);
+    
+    let finalPrice = priceWithoutComma / users;
+    if (formData.cur_nm === 'KRW' || formData.cur_nm === 'JPY') {
+      finalPrice = Math.floor(finalPrice);
+    } else {
+      finalPrice = Math.floor(finalPrice * 100) / 100;
+    }
 
     onSave({ ...compareData, MONTHLY_PRICE: finalPrice });
   };
@@ -144,7 +149,18 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
   const getCalculatedPrice = () => {
     const price = Number(String(formData.MONTHLY_PRICE).replace(/,/g, ""));
     const users = Number(formData.SHARED_USERS) || 1;
-    return price > 0 && users > 1 ? Math.floor(price / users).toLocaleString() : "";
+    if (price > 0 && users > 1) {
+      let calc = price / users;
+      if (formData.cur_nm === 'KRW' || formData.cur_nm === 'JPY') {
+        calc = Math.floor(calc);
+      } else {
+        calc = Math.floor(calc * 100) / 100;
+      }
+      const parts = String(calc).split('.');
+      parts[0] = Number(parts[0]).toLocaleString();
+      return parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+    }
+    return "";
   };
 
   // 결제 주기 변경 시 결제 예정일 자동 조정 로직 추가
@@ -203,11 +219,14 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField label="서비스 이름" fullWidth value={formData.SERVICE_NM || ''} onChange={(e) => setFormData({...formData, SERVICE_NM: e.target.value})} />
           <TextField
-            label="월 구독료" fullWidth InputProps={{ endAdornment: <InputAdornment position="end">원</InputAdornment> }}
+            label="월 구독료" fullWidth InputProps={{ endAdornment: <InputAdornment position="end">{formData.cur_nm === "KRW" ? "원" : formData.cur_nm}</InputAdornment> }}
             value={formData.MONTHLY_PRICE || ''}
             onChange={(e) => {
-              const rawValue = e.target.value.replace(/[^0-9]/g, "");
-              setFormData({...formData, MONTHLY_PRICE: rawValue ? Number(rawValue).toLocaleString() : ""});
+              const rawValue = e.target.value.replace(/[^0-9.]/g, ""); // 소수점 허용
+              const parts = rawValue.split('.');
+              parts[0] = parts[0] ? Number(parts[0]).toLocaleString() : "";
+              const formatted = parts.length > 1 ? parts[0] + '.' + parts[1].slice(0, 4) : parts[0];
+              setFormData({...formData, MONTHLY_PRICE: formatted});
             }}
           />
 
@@ -217,7 +236,36 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
             select
             fullWidth 
             value={formData.cur_nm || ''} 
-            onChange={(e) => setFormData({...formData, cur_nm: e.target.value})}
+            onChange={(e) => {
+              const newCurrency = e.target.value;
+              const oldCurrency = formData.cur_nm || "KRW";
+              let updatedPrice = formData.MONTHLY_PRICE;
+
+              if (currencies.length > 0) {
+                const oldCurrencyData = currencies.find(c => c.currency === oldCurrency);
+                const newCurrencyData = currencies.find(c => c.currency === newCurrency);
+                
+                const oldRate = oldCurrencyData && oldCurrencyData.exchange_rate ? Number(oldCurrencyData.exchange_rate) : 1;
+                const newRate = newCurrencyData && newCurrencyData.exchange_rate ? Number(newCurrencyData.exchange_rate) : 1;
+                
+                const currentPriceRaw = Number(String(formData.MONTHLY_PRICE).replace(/,/g, ""));
+                
+                if (!isNaN(currentPriceRaw) && currentPriceRaw > 0) {
+                  let convertedPrice = (currentPriceRaw * oldRate) / newRate;
+                  // 원/엔화는 정수, 나머지는 소수점 2자리까지
+                  if (newCurrency === 'KRW' || newCurrency === 'JPY') {
+                    convertedPrice = Math.round(convertedPrice);
+                  } else {
+                    convertedPrice = Math.round(convertedPrice * 10000) / 10000;
+                  }
+                  const parts = String(convertedPrice).split('.');
+                  parts[0] = Number(parts[0]).toLocaleString();
+                  updatedPrice = parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+                }
+              }
+              
+              setFormData({...formData, cur_nm: newCurrency, MONTHLY_PRICE: updatedPrice});
+            }}
             helperText="통화를 선택하세요."
             SelectProps={{
               MenuProps: {
@@ -243,7 +291,7 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
             fullWidth 
             value={formData.SHARED_USERS || 1} 
             onChange={(e) => setFormData({...formData, SHARED_USERS: Math.max(1, parseInt(e.target.value) || 1)})}
-            helperText={getCalculatedPrice() ? `수정될 1인당 청구 금액: ${getCalculatedPrice()}원` : "가격을 수정하고 인원을 나누려면 입력하세요."}
+            helperText={getCalculatedPrice() ? `수정될 1인당 청구 금액: ${getCalculatedPrice()}${formData.cur_nm === "KRW" ? "원" : ` ${formData.cur_nm}`}` : "가격을 수정하고 인원을 나누려면 입력하세요."}
             inputProps={{ min: 1 }}
           />
 

@@ -1,6 +1,6 @@
 import useAuthStore from "../store/authStore";
 import styles from '../styles/MainPage.module.css';
-import { selectsumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi } from "../api/mainpageApi";
+import { selectsumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi, selectcurnmApi } from "../api/mainpageApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
@@ -79,6 +79,15 @@ const MainPage = () => {
   // 결제 주기 배열 생성
   const CYCLES = [1, 3, 6, 12];
 
+  // 통화 목록 조회 (환율 계산용)
+  const { data: curNMData = [] } = useQuery({
+    queryKey: ["selectcurNM"],
+    queryFn: () => selectcurnmApi({}),
+    refetchOnWindowFocus: false,
+  });
+  const currencies = Array.isArray(curNMData) ? curNMData : (curNMData?.result || []);
+  const prefCurrency = localStorage.getItem("prefCurrency") || "KRW";
+
   /* --------------------------------------------------------------------------------
    columns
   -------------------------------------------------------------------------------- */
@@ -105,9 +114,15 @@ const MainPage = () => {
       editable: false, 
       headerAlign: "center", 
       align: "center",
-      valueFormatter: (value) => {
-        if (!value) return "0원";
-        return `${value.toLocaleString()}원`;
+      renderCell: (params) => {
+        const price = params.row.MONTHLY_PRICE;
+        
+        // 백엔드에서 넘겨주는 실제 영어 통화 코드(CURRENCY)를 바로 사용합니다.
+        const displayCurrency = params.row.CURRENCY || "KRW";
+        const currencySuffix = displayCurrency === "KRW" ? "원" : displayCurrency;
+        
+        if (!price) return `0 ${currencySuffix}`;
+        return `${Number(price).toLocaleString()} ${currencySuffix}`;
       }
     },
     { field: "NEXT_BILLING_DT", headerName: "결제 예정일", width: 100, editable: false, headerAlign: "center", align: "center" },
@@ -194,6 +209,15 @@ const MainPage = () => {
     }
   );
   const sumresult = sumData?.result?.[0] || { sum: 0, count: 0 };
+  
+  let displayedSum = sumresult.sum || 0;
+  if (prefCurrency !== "KRW" && currencies.length > 0) {
+    const targetCur = currencies.find((c) => c.currency === prefCurrency);
+    const targetRate = targetCur?.exchange_rate ? Number(targetCur.exchange_rate) : 1;
+    if (targetRate > 0) {
+      displayedSum = Math.floor((displayedSum / targetRate) * 100) / 100;
+    }
+  }
 
 
   /* --------------------------------------------------------------------------------
@@ -297,13 +321,25 @@ const MainPage = () => {
   /* --------------------------------------------------------------------------------
     도넛 차트
   -------------------------------------------------------------------------------- */  
+  const chartDataValues = chartResult.map(item => {
+    let val = item.TOTAL_PRICE || 0;
+    if (prefCurrency !== "KRW" && currencies.length > 0) {
+      const targetCur = currencies.find((c) => c.currency === prefCurrency);
+      const targetRate = targetCur?.exchange_rate ? Number(targetCur.exchange_rate) : 1;
+      if (targetRate > 0) {
+        val = Math.floor((val / targetRate) * 100) / 100;
+      }
+    }
+    return val;
+  });
+
   const data = {
     // labels: ['work', 'OTT', 'music'] 형태의 배열 생성
     labels: chartResult.map(item => item.CATEGORY),
     datasets: [
       {
         label: '구독 지출',
-        data: chartResult.map(item => item.TOTAL_PRICE),
+        data: chartDataValues,
         backgroundColor: generateColors(chartResult.length),
         borderWidth: 1,
         cutout: '70%',
@@ -325,6 +361,11 @@ const MainPage = () => {
       },
       tooltip: {
         enabled: true, // 마우스 호버 시 툴팁 표시
+        callbacks: {
+          label: (context) => {
+            return ` ${context.parsed.toLocaleString()} ${prefCurrency === "KRW" ? "원" : prefCurrency}`;
+          }
+        }
       },
     },
   };
@@ -459,7 +500,7 @@ const MainPage = () => {
         content = (
           <div className={styles.summaryCardInner}>
             <p style={{color: '#817d7d'}}>활성화된 총 구독 금액</p>
-            <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{sumresult.sum?.toLocaleString() || 0}원</p>
+            <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{displayedSum.toLocaleString()} {prefCurrency === "KRW" ? "원" : prefCurrency}</p>
           </div>
         );
         break;

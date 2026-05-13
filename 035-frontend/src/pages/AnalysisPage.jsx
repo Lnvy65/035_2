@@ -12,7 +12,7 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 
-import { selectsublistApi } from "../api/mainpageApi";
+import { selectsublistApi, selectcurnmApi } from "../api/mainpageApi";
 import useAuthStore from "../store/authStore";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTitle, Tooltip, Legend);
@@ -27,6 +27,14 @@ const AnalysisPage = () => {
     const m = (currentMonth + i - 1) % 12 + 1;
     return m < currentMonth ? `내년 ${m}월` : `${m}월`;
   });
+
+  const { data: curNMData = [] } = useQuery({
+    queryKey: ["selectcurNM"],
+    queryFn: () => selectcurnmApi({}),
+    refetchOnWindowFocus: false,
+  });
+  const currencies = Array.isArray(curNMData) ? curNMData : (curNMData?.result || []);
+  const prefCurrency = localStorage.getItem("prefCurrency") || "KRW";
 
   /* --------------------------------------------------------------------------------
    데이터 가져오기
@@ -54,7 +62,25 @@ const AnalysisPage = () => {
     );
 
     activeSubs.forEach((sub) => {
-      const price = Number(sub.MONTHLY_PRICE || 0);
+      let price = Number(sub.MONTHLY_PRICE || 0);
+      
+      // 1. 해당 구독의 통화(currency)를 KRW로 변환
+      const subCur = sub.CURRENCY || "KRW";
+      const subCurData = currencies.find(c => c.currency === subCur);
+      const subRate = subCurData?.exchange_rate ? Number(subCurData.exchange_rate) : 1;
+      let priceInKRW = price * subRate;
+
+      // 2. KRW로 변환된 금액을 사용자가 설정한 선호 통화(prefCurrency)로 변환
+      const prefCurData = currencies.find(c => c.currency === prefCurrency);
+      const prefRate = prefCurData?.exchange_rate ? Number(prefCurData.exchange_rate) : 1;
+      
+      let convertedPrice = priceInKRW / prefRate;
+      if (prefCurrency === "KRW" || prefCurrency === "JPY") {
+        convertedPrice = Math.round(convertedPrice);
+      } else {
+        convertedPrice = Math.round(convertedPrice * 100) / 100;
+      }
+
       const cycle = Number(sub.BILLING_CYCLE || 1);
 
       const baseDate = sub.NEXT_BILLING_DT ? new Date(sub.NEXT_BILLING_DT) : new Date();
@@ -65,11 +91,11 @@ const AnalysisPage = () => {
         const targetMonth = (currentMonth + i - 1) % 12 + 1; 
 
         if (cycle === 1) {
-          monthlySpending[i] += price;
+          monthlySpending[i] += convertedPrice;
         } else {
           // 주기가 3, 6, 12개월인 경우: (검사하는 달 - 기준 달)이 주기로 나누어 떨어지면 결제
           if (Math.abs(targetMonth - baseMonth) % cycle === 0) {
-            monthlySpending[i] += price;
+            monthlySpending[i] += convertedPrice;
           }
         }
       }
@@ -77,7 +103,7 @@ const AnalysisPage = () => {
 
     // 통계 계산
     const totalYearly = monthlySpending.reduce((acc, cur) => acc + cur, 0);
-    const averageMonthly = Math.round(totalYearly / 12);
+    const averageMonthly = prefCurrency === "KRW" || prefCurrency === "JPY" ? Math.round(totalYearly / 12) : Math.round((totalYearly / 12) * 100) / 100;
     
     const maxSpending = Math.max(...monthlySpending);
     const maxIndex = monthlySpending.indexOf(maxSpending); // 0~11 사이의 인덱스
@@ -86,7 +112,7 @@ const AnalysisPage = () => {
     const maxMonthName = maxMonthNum < currentMonth ? `내년 ${maxMonthNum}월` : `${maxMonthNum}월`;
 
     return { monthlySpending, totalYearly, averageMonthly, maxMonthName, maxSpending };
-  }, [subListData, currentMonth]);
+  }, [subListData, currentMonth, currencies, prefCurrency]);
 
   /* --------------------------------------------------------------------------------
    차트 옵션 설정
@@ -95,7 +121,7 @@ const AnalysisPage = () => {
     labels: chartLabels, // 동적으로 만든 라벨 적용
     datasets: [
       {
-        label: "예상 월별 지출 (원)",
+        label: `예상 월별 지출 (${prefCurrency === "KRW" ? "원" : prefCurrency})`,
         data: analysisData.monthlySpending,
         backgroundColor: "rgba(54, 162, 235, 0.6)",
         borderColor: "rgba(54, 162, 235, 1)",
@@ -112,7 +138,7 @@ const AnalysisPage = () => {
       legend: { position: "top" },
       tooltip: {
         callbacks: {
-          label: (context) => `${context.parsed.y.toLocaleString()}원`,
+          label: (context) => `${context.parsed.y.toLocaleString()} ${prefCurrency === "KRW" ? "원" : prefCurrency}`,
         },
       },
     },
@@ -120,7 +146,7 @@ const AnalysisPage = () => {
       y: {
         beginAtZero: true,
         ticks: {
-          callback: (value) => `${value.toLocaleString()}원`,
+          callback: (value) => `${value.toLocaleString()} ${prefCurrency === "KRW" ? "원" : prefCurrency}`,
         },
       },
     },
@@ -152,7 +178,7 @@ const AnalysisPage = () => {
               향후 1년간 총 예상 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {analysisData.totalYearly.toLocaleString()}원
+          {analysisData.totalYearly.toLocaleString()} {prefCurrency === "KRW" ? "원" : prefCurrency}
             </Typography>
           </Card>
         </Grid>
@@ -162,7 +188,7 @@ const AnalysisPage = () => {
               월 평균 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {analysisData.averageMonthly.toLocaleString()}원
+          {analysisData.averageMonthly.toLocaleString()} {prefCurrency === "KRW" ? "원" : prefCurrency}
             </Typography>
           </Card>
         </Grid>
@@ -175,7 +201,7 @@ const AnalysisPage = () => {
               {analysisData.maxMonthName} {/* 동적으로 바뀐 라벨 이름 */}
             </Typography>
             <Typography variant="body2" color="text.secondary" mt={0.5}>
-              ({analysisData.maxSpending.toLocaleString()}원 예정)
+          ({analysisData.maxSpending.toLocaleString()} {prefCurrency === "KRW" ? "원" : prefCurrency} 예정)
             </Typography>
           </Card>
         </Grid>

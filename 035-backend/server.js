@@ -721,6 +721,7 @@ app.post('/rest/main/selectsublist', async (req, res) => {
                                ,us.USE_YN
                                ,us.CREATE_DT
                                ,us.UPDATE_DT
+                               ,us.CURRENCY
                                ,er.CUR_NM
                           from user_sub us
                      left join exchange_rate er on us.currency = er.currency
@@ -751,14 +752,13 @@ app.post('/rest/main/selectsubchart', async (req, res) => {
     try {
         jwt.verify(accessToken, SECRET_KEY);
 
-        // 1. LEFT JOIN의 ON 절에 userName 조건을 넣어야 합니다. 
-        // 그래야 '리뷰가 없는 공지'도 결과에 포함됩니다.
-        let query = `SELECT      CATEGORY
-                                ,SUM(MONTHLY_PRICE) AS TOTAL_PRICE
-                       FROM     USER_SUB
-                      WHERE     USER_NM = ?
-                        AND     USE_YN = 'Y'
-                   GROUP BY     CATEGORY
+        let query = `SELECT      us.CATEGORY
+                                ,ROUND(SUM(us.MONTHLY_PRICE * COALESCE(er.exchange_rate, 1))) AS TOTAL_PRICE
+                       FROM     USER_SUB us
+                  LEFT JOIN (select * from exchange_rate group by currency HAVING MAX(created_at)) er on us.currency = er.currency
+                      WHERE     us.USER_NM = ?
+                        AND     us.USE_YN = 'Y'
+                   GROUP BY     us.CATEGORY
                    ORDER BY     TOTAL_PRICE DESC`;
         
         // userName은 JOIN 조건으로 들어가므로 가장 먼저 push
@@ -1014,7 +1014,7 @@ app.post('/rest/main/selectcurnm', async (req, res) => {
     try {
         jwt.verify(accessToken, SECRET_KEY);
 
-        let query = `select distinct currency, cur_nm from exchange_rate`;
+        let query = `select currency, cur_nm, exchange_rate from exchange_rate group by currency HAVING MAX(created_at)`;
 
         const result = await db.all(query);
 
