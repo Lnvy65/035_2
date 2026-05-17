@@ -22,19 +22,19 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
   useEffect(() => {
   if (editData && open && curNMData.length > 0) {
       // 1. 그리드에서 넘어온 한글 값 (예: "한국 원")
-      const initialKoreanName = editData.cur_nm; 
+      const initialKoreanName = editData.CUR_NM; 
 
       // 2. 전체 리스트(curNMData)에서 한글 이름이 일치하는 항목 찾기
-      const matchedCurrency = curNMData.find(item => item.cur_nm === initialKoreanName);
+      const matchedCurrency = curNMData.find(item => item.CUR_NM === initialKoreanName);
 
       // 3. 일치하는 코드가 있으면 영어 코드(KRW)를 사용, 없으면 그대로 사용
-      const currencyCode = matchedCurrency ? matchedCurrency.currency : initialKoreanName;
+      const currencyCode = matchedCurrency ? matchedCurrency.CURRENCY : initialKoreanName;
 
       const formattedPrice = editData.MONTHLY_PRICE ? Number(editData.MONTHLY_PRICE).toLocaleString() : "";
 
       setFormData({ 
         ...editData, 
-        cur_nm: currencyCode, // 이제 상태값은 "KRW" 같은 영어 코드가 됨
+        CUR_NM: currencyCode, // 이제 상태값은 "KRW" 같은 영어 코드가 됨
         MONTHLY_PRICE: formattedPrice, 
         SHARED_USERS: 1 
       });
@@ -123,7 +123,7 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
   const isUnchanged = 
     formData?.SERVICE_NM === editData?.SERVICE_NM &&
     currentPrice === originalPrice &&
-    formData?.cur_nm === (currencies.find(c => c.cur_nm === editData?.cur_nm)?.currency || editData?.cur_nm) &&
+    formData?.CUR_NM === (currencies.find(c => c.CUR_NM === editData?.CUR_NM)?.CURRENCY || editData?.CUR_NM) &&
     formData?.NEXT_BILLING_DT === editData?.NEXT_BILLING_DT &&
     formData?.BILLING_CYCLE === editData?.BILLING_CYCLE &&
     formData?.ANCHOR_DAY === editData?.ANCHOR_DAY &&
@@ -216,8 +216,8 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
             type="text"
             select
             fullWidth 
-            value={formData.cur_nm || ''} 
-            onChange={(e) => setFormData({...formData, cur_nm: e.target.value})}
+            value={formData.CUR_NM || ''} 
+            onChange={(e) => setFormData({...formData, CUR_NM: e.target.value})}
             helperText="통화를 선택하세요."
             SelectProps={{
               MenuProps: {
@@ -231,8 +231,8 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
             }}
           >
           {currencies.map((option) => (
-            <MenuItem key={option.currency} value={option.currency}>
-              {option.cur_nm} ({option.currency})
+            <MenuItem key={option.CURRENCY} value={option.CURRENCY}>
+              {option.CUR_NM} ({option.CURRENCY})
             </MenuItem>
           ))}
           </TextField>

@@ -1,6 +1,6 @@
 import useAuthStore from "../store/authStore";
 import styles from '../styles/MainPage.module.css';
-import { selectsumApi, selectmonthlysumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi } from "../api/mainpageApi";
+import { selectsumApi, selectmonthlysumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi, selectsubkrlistApi } from "../api/mainpageApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo } from "react";
 import { DataGrid } from "@mui/x-data-grid";
@@ -36,40 +36,55 @@ const MainPage = () => {
 
   const [openCreate, setOpenCreate] = useState(false);
 
+  const [isKrwMode, setIsKrwMode] = useState(false);
+
   const userName = user?.username;
+
+  const userId = user?.id;
 
   // --- Queries ---
   const { data: sumData, isLoading: isSumLoading } = useQuery({
-    queryKey: QUERY_KEYS.sum(userName),
-    queryFn: () => selectsumApi({ userName }),
-    enabled: !!userName,
+    queryKey: QUERY_KEYS.sum(userId),
+    queryFn: () => selectsumApi({ userId }),
+    enabled: !!userId,
   });
   const totalSumResult = sumData?.result?.[0] || { sum: 0, count: 0 };
 
   const { data: monthlySumResultsumData, isLoading: isMonthlySumLoading } = useQuery({
-  queryKey: QUERY_KEYS.monthlySum(userName),
-  queryFn: () => selectmonthlysumApi({ userName }),
-  enabled: !!userName,
+  queryKey: QUERY_KEYS.monthlySum(userId),
+  queryFn: () => selectmonthlysumApi({ userId }),
+  enabled: !!userId,
   });
   const monthlySumResult = monthlySumResultsumData?.result?.[0] || { sum: 0, count: 0 };
 
   const { data: dateData, isLoading: isdateLoading } = useQuery({
-    queryKey: QUERY_KEYS.date(userName),
-    queryFn: () => selectdateApi({ userName }),
-    enabled: !!userName,
+    queryKey: QUERY_KEYS.date(userId),
+    queryFn: () => selectdateApi({ userId }),
+    enabled: !!userId,
   });
   const dateresult = dateData?.result?.[0] || { NEXT_BILLING_DT: 0, SERVICE_NM: 0 };
 
-  const { data: subListData = [], isLoading: issubListLoading, refetch: refetchSubList } = useQuery({
-    queryKey: QUERY_KEYS.list(userName),
-    queryFn: () => selectsublistApi({ userName }),
-    enabled: !!userName,
+  // 1. 외화 리스트 (기본 모드)
+  const { data: subListData = [], isLoading: issubListLoading } = useQuery({
+    queryKey: QUERY_KEYS.list(userId),
+    queryFn: () => selectsublistApi({ userId }),
+    // KRW 모드가 아닐 때만 호출 (!!userId는 로그인이 되어있을 때라는 기본 조건)
+    enabled: !!userId && !isKrwMode, 
+  });
+
+  // 2. 원화 환산 리스트 (원화 모드)
+  const { data: subKRListData = [], isLoading: issubKRListLoading } = useQuery({
+    // [중요] 키가 중복되지 않게 'krw' 추가
+    queryKey: [...QUERY_KEYS.list(userId), "krw"], 
+    queryFn: () => selectsubkrlistApi({ userId }),
+    // KRW 모드일 때만 호출
+    enabled: !!userId && isKrwMode, 
   });
 
   const { data: subchartData, isLoading: issubchartLoading } = useQuery({
-    queryKey: QUERY_KEYS.chart(userName),
-    queryFn: () => selectsubchartApi({ userName }),
-    enabled: !!userName,
+    queryKey: QUERY_KEYS.chart(userId),
+    queryFn: () => selectsubchartApi({ userId }),
+    enabled: !!userId,
   });
   const chartResult = subchartData?.result || [];
 
@@ -117,11 +132,26 @@ const MainPage = () => {
     setOpenEdit(false);
     setTimeout(() => setEditData(null), 200); // 애니메이션 종료 후 초기화
   };
+
+  const displayData = isKrwMode ? subKRListData : subListData;
+  const isLoading = isKrwMode ? issubKRListLoading : issubListLoading;
  
   const filteredRows = useMemo(() => {
-    if (!subListData.length) return [];
-    return subListData.filter((row) => row.SERVICE_NM.toLowerCase().includes(searchText.toLowerCase()));
-  }, [subListData, searchText]);
+    // 1. subListData 처리
+    const rawSubData = Array.isArray(subListData) ? subListData : (subListData?.result || []);
+    // 2. subKRListData 처리
+    const rawKrData = Array.isArray(subKRListData) ? subKRListData : (subKRListData?.result || []);
+    
+    // 3. 현재 모드에 맞는 데이터 선택
+    const rows = isKrwMode ? rawKrData : rawSubData;
+    
+    if (!rows.length) return [];
+
+    return rows.filter((row) => 
+      row.SERVICE_NM?.toLowerCase().includes(searchText.toLowerCase())
+    );
+  }, [isKrwMode, subListData, subKRListData, searchText]); 
+  // 의존성에 isKrwMode를 명시적으로 넣어서 모드 변경 시 즉시 재계산되게 합니다.
 
   const chartOptions = useMemo(() => ({
     responsive: true, maintainAspectRatio: false,
@@ -151,12 +181,10 @@ const MainPage = () => {
       </div>
 
       <div className={styles.summarySection}>
-        {/* 여기 고쳐야됨 */}
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>활성화된 {monthNameKR} 구독 금액</p>
           <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{monthlySumResult.sum?.toLocaleString() || 0}원</p>
         </div>
-        {/* 여기 고쳐야됨 */}
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>활성화된 총 구독 금액</p>
           <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{totalSumResult.sum?.toLocaleString() || 0}원</p>
@@ -184,6 +212,14 @@ const MainPage = () => {
                 InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: '#999' }} /></InputAdornment>) }}
                 sx={{ width: '220px', '& .MuiOutlinedInput-root': { borderRadius: '8px', height: '36px'} }}
               />
+              <Button 
+                variant="outlined" 
+                size="small" 
+                onClick={() => setIsKrwMode((prev) => !prev)} 
+                sx={{ borderRadius: '8px', height: '36px', textTransform: 'none', borderColor: '#e5e7eb', color: '#666', minWidth: '80px' }}
+              >
+                {isKrwMode ? "외화 결제액으로 보기" : "원화 환산액으로 보기"}
+              </Button>
               <Button variant="outlined" size="small" onClick={() => refetchSubList()} sx={{ borderRadius: '8px', height: '36px', textTransform: 'none', borderColor: '#e5e7eb', color: '#666', minWidth: '80px' }}>새로고침</Button>
               <button className={styles.addButton} onClick={() => setOpenCreate(true)}><span style={{ marginRight: '4px' }}>+</span> 추가</button>
 
@@ -207,8 +243,12 @@ const MainPage = () => {
           
           <div className={styles.tablePlaceholder}>
             <DataGrid 
-              rows={filteredRows} getRowId={(row) => row.SEQ} columns={columns} onCellClick={handleCellClick}
-              loading={issubListLoading} sx={{ cursor: 'pointer' }}
+              rows={filteredRows} // 필터링된 현재 모드의 데이터를 보여줌
+              getRowId={(row) => row.SEQ} 
+              columns={columns} 
+              onCellClick={handleCellClick}
+              loading={isLoading} // 현재 모드에 맞는 로딩 상태 표시
+              sx={{ cursor: 'pointer' }}
               initialState={{ columns: { columnVisibilityModel: { SEQ: false } } }}
             />
           </div>

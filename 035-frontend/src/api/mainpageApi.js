@@ -1,10 +1,10 @@
 import api from "./axios";
 
-export const selectsumApi = async ({userName}) => {  
+export const selectsumApi = async ({userId}) => {  
   
   const response = await api.post(
     "/rest/main/selectsum",
-    { "userName" : userName },
+    { "userId" : userId },
     { withCredentials: true }
   );
 
@@ -12,11 +12,11 @@ export const selectsumApi = async ({userName}) => {
 };
 
 
-export const selectmonthlysumApi = async ({userName}) => {  
+export const selectmonthlysumApi = async ({userId}) => {  
   
   const response = await api.post(
     "/rest/main/selectmonthlysum",
-    { "userName" : userName },
+    { "userId" : userId },
     { withCredentials: true }
   );
 
@@ -24,11 +24,11 @@ export const selectmonthlysumApi = async ({userName}) => {
 };
 
 
-export const selectdateApi = async ({userName}) => {  
+export const selectdateApi = async ({userId}) => {  
   
   const response = await api.post(
     "/rest/main/selectdate",
-    { "userName" : userName },
+    { "userId" : userId },
     { withCredentials: true }
   );
 
@@ -36,11 +36,23 @@ export const selectdateApi = async ({userName}) => {
 };
 
 
-export const selectsublistApi = async ({userName}) => {  
+export const selectsublistApi = async ({userId}) => {  
   
   const response = await api.post(
     "/rest/main/selectsublist",
-    { "userName" : userName },
+    { "userId" : userId },
+    { withCredentials: true }
+  );
+
+  return response.data.result;
+};
+
+
+export const selectsubkrlistApi = async ({userId}) => {  
+  
+  const response = await api.post(
+    "/rest/main/selectsubkrlist",
+    { "userId" : userId },
     { withCredentials: true }
   );
 
@@ -60,11 +72,11 @@ export const deleteSubApi = async ({ seq }) => {
 };
 
 
-export const selectsubchartApi = async ({userName}) => {  
+export const selectsubchartApi = async ({userId}) => {  
   
   const response = await api.post(
     "/rest/main/selectsubchart",
-    { "userName" : userName },
+    { "userId" : userId },
     { withCredentials: true }
   );
 
@@ -74,7 +86,7 @@ export const selectsubchartApi = async ({userName}) => {
 // api/mainpageApi.js 수정
 export const insertSubApi = async (subData) => {
   // FormData를 생성하지 않고, 객체를 그대로 넘깁니다.
-  // subData에는 { userName, SERVICE_NM, ... }가 포함되어 있어야 함
+  // subData에는 { userId, SERVICE_NM, ... }가 포함되어 있어야 함
   const response = await api.post("/rest/main/insertsub", subData, {
     withCredentials: true,
   });
@@ -85,7 +97,7 @@ export const insertSubApi = async (subData) => {
 // api/mainpageApi.js 수정
 export const updateSubApi = async (subData) => {
   // FormData를 생성하지 않고, 객체를 그대로 넘깁니다.
-  // updatesub에는 { userName, SERVICE_NM, ... }가 포함되어 있어야 함
+  // updatesub에는 { userId, SERVICE_NM, ... }가 포함되어 있어야 함
   const response = await api.post("/rest/main/updatesub", subData, {
     withCredentials: true,
   });

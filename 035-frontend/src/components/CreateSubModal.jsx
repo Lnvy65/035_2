@@ -148,8 +148,8 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             }}
           >
             {currencies.map((option) => (
-              <MenuItem key={option.currency} value={option.currency}>
-                {option.cur_nm} ({option.currency})
+              <MenuItem key={option.CURRENCY} value={option.CURRENCY}>
+                {option.CUR_NM} ({option.CURRENCY})
               </MenuItem>
             ))}
           </TextField>

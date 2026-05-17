@@ -1,6 +1,6 @@
-import React, { useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Box, Card, Typography, Grid } from "@mui/material";
+import { Box, Card, Typography, Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, Divider } from "@mui/material";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,92 +11,118 @@ import {
   Legend,
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
-
-import { selectsublistApi } from "../api/mainpageApi";
+import { DataGrid } from '@mui/x-data-grid';
+import { selectsubchartdataApi, selectavgApi, selectcntcategorydataApi, selectCategoryDetailApi } from "../api/analysispage";
 import useAuthStore from "../store/authStore";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, ChartTitle, Tooltip, Legend);
 
 const AnalysisPage = () => {
   const user = useAuthStore((state) => state.user);
-  const userName = user?.username;
+  const userId = user?.id;
 
-  const currentMonth = new Date().getMonth() + 1;
+  // 모달 상태 및 선택된 데이터 상태
+  const [open, setOpen] = useState(false);
+  const [selectedData, setSelectedData] = useState({ month: "", amount: 0 });
 
-  const chartLabels = Array.from({ length: 12 }, (_, i) => {
-    const m = (currentMonth + i - 1) % 12 + 1;
-    return m < currentMonth ? `내년 ${m}월` : `${m}월`;
-  });
+  // 1번째 DataGrid에서 선택한 카테고리 상태를 관리
+  const [selectedCategory, setSelectedCategory] = useState("");
 
-  /* --------------------------------------------------------------------------------
-   데이터 가져오기
-  -------------------------------------------------------------------------------- */
-  const { data: subListData = [], isLoading, isError } = useQuery({
-    queryKey: ["selectsublist", userName],
-    queryFn: () => selectsublistApi({ userName }),
-    enabled: !!userName,
-    refetchOnWindowFocus: false,
-    retry: 0,
-  });
+  // Chart Component에 접근하기 위한 ref 생성
+  const chartRef = useRef(null);
 
-  /* --------------------------------------------------------------------------------
-   데이터 가공 로직 (현재 달을 기준으로 향후 12개월 연산)
-  -------------------------------------------------------------------------------- */
-  const analysisData = useMemo(() => {
-    const monthlySpending = Array(12).fill(0);
+  // 막대 클릭 이벤트 핸들러
+  const handleChartClick = (event) => {
+    const { current: chart } = chartRef;
+    if (!chart) return;
 
-    if (!subListData || subListData.length === 0) {
-      return { monthlySpending, totalYearly: 0, averageMonthly: 0, maxMonthName: "없음", maxSpending: 0 };
+    const elements = chart.getElementsAtEventForMode(event, "nearest", { intersect: true }, true);
+
+    if (elements.length > 0) {
+      const { index } = elements[0];
+      const clickedMonth = chartData.labels[index];
+      const clickedAmount = chartData.datasets[0].data[index];
+
+      setSelectedData({ month: clickedMonth, amount: clickedAmount });
+      setSelectedCategory("");
+      setOpen(true);
     }
+  };
 
-    const activeSubs = subListData.filter(
-      (item) => item.USE_YN === "Y" || item.USE_YN === "사용중"
-    );
+  // Dialog 닫기 함수
+  const handleClose = () => {
+    setOpen(false);
+    setSelectedCategory("");
+  };
 
-    activeSubs.forEach((sub) => {
-      const price = Number(sub.MONTHLY_PRICE || 0);
-      const cycle = Number(sub.BILLING_CYCLE || 1);
+  // 1번째 DataGrid의 행(Row) 클릭 이벤트 핸들러
+  const handleRowClick = (params) => {
+    // params.row에는 클릭한 행의 전체 데이터가 들어있습니다.
+    if (params.row && params.row.CATEGORY) {
+      setSelectedCategory(params.row.CATEGORY);
+    }
+  };
 
-      const baseDate = sub.NEXT_BILLING_DT ? new Date(sub.NEXT_BILLING_DT) : new Date();
-      const baseMonth = baseDate.getMonth() + 1;
+  /* --------------------------------------------------------------------------------
+   차트 데이터 가져오기
+  -------------------------------------------------------------------------------- */
+  const { data: subBarChartData = [], isLoading: isDataLoading, refetch: refetchData, isFetching: isDataFetching, isError: isError } = useQuery(
+    {
+      queryKey: ["selectsubchartdata", userId],
+      queryFn: () => selectsubchartdataApi({ userId }),
+      enabled: !!userId, // userId가 있을 때만 쿼리 실행
+      refetchOnWindowFocus: false,
+    }
+  );
+  const dataresult = subBarChartData?.result || [];
 
-      for (let i = 0; i < 12; i++) {
-        // 실제 달력 상의 월 (1~12)
-        const targetMonth = (currentMonth + i - 1) % 12 + 1; 
+  /* --------------------------------------------------------------------------------
+   평균 데이터 가져오기
+  -------------------------------------------------------------------------------- */
+  const { data: avgData = [], isLoading: isAvgLoading, refetch: refetchAvg, isFetching: isAvgFetching, isError: isAvgError } = useQuery(
+    {
+      queryKey: ["selectavg", userId],
+      queryFn: () => selectavgApi({ userId }),
+      enabled: !!userId, // userId가 있을 때만 쿼리 실행
+      refetchOnWindowFocus: false,
+    }
+  );
+  const avgResult = avgData?.result?.[0] || [];
 
-        if (cycle === 1) {
-          monthlySpending[i] += price;
-        } else {
-          // 주기가 3, 6, 12개월인 경우: (검사하는 달 - 기준 달)이 주기로 나누어 떨어지면 결제
-          if (Math.abs(targetMonth - baseMonth) % cycle === 0) {
-            monthlySpending[i] += price;
-          }
-        }
-      }
-    });
+  /* --------------------------------------------------------------------------------
+   카테고리별 개수 데이터 가져오기
+  -------------------------------------------------------------------------------- */
+  const { data: cntCategoryData = [], isLoading: isCntCategoryDataLoading, refetch: refetchCntCategoryData, isFetching: isCntCategoryDataFetching, isError: isCntCategoryError } = useQuery(
+    {
+      queryKey: ["selectcntcategorydata", userId, selectedData.month],
+      queryFn: () => selectcntcategorydataApi({ userId, selectedDate: selectedData.month }),
+      enabled: !!userId && !!selectedData.month,
+      refetchOnWindowFocus: false,
+    }
+  );
+  const cntcategorydataresult = cntCategoryData?.result || [];
 
-    // 통계 계산
-    const totalYearly = monthlySpending.reduce((acc, cur) => acc + cur, 0);
-    const averageMonthly = Math.round(totalYearly / 12);
-    
-    const maxSpending = Math.max(...monthlySpending);
-    const maxIndex = monthlySpending.indexOf(maxSpending); // 0~11 사이의 인덱스
-    const maxMonthNum = (currentMonth + maxIndex - 1) % 12 + 1;
-    // 과거 달로 돌아가면 '내년'을 붙여줌
-    const maxMonthName = maxMonthNum < currentMonth ? `내년 ${maxMonthNum}월` : `${maxMonthNum}월`;
-
-    return { monthlySpending, totalYearly, averageMonthly, maxMonthName, maxSpending };
-  }, [subListData, currentMonth]);
+  /* --------------------------------------------------------------------------------
+   [DataGrid 2] 클릭한 카테고리의 "상세" 데이터 가져오기 (신규 추가)
+  -------------------------------------------------------------------------------- */
+  const { data: categoryDetailData = [], isLoading: isDetailLoading } = useQuery({
+    // 월과 카테고리가 모두 바뀔 때마다 데이터를 새로 동적 패치합니다.
+    queryKey: ["selectCategoryDetail", userId, selectedData.month, selectedCategory],
+    queryFn: () => selectCategoryDetailApi({ userId, selectedDate: selectedData.month, category: selectedCategory }),
+    enabled: !!userId && !!selectedData.month && !!selectedCategory,
+    refetchOnWindowFocus: false,
+  });
+  const categoryDetailResult = categoryDetailData?.result || [];
 
   /* --------------------------------------------------------------------------------
    차트 옵션 설정
   -------------------------------------------------------------------------------- */
   const chartData = {
-    labels: chartLabels, // 동적으로 만든 라벨 적용
+    labels: dataresult.map((item) => item.date),
     datasets: [
       {
-        label: "예상 월별 지출 (원)",
-        data: analysisData.monthlySpending,
+        label: "월별 지출 (원)",
+        data: dataresult.map((item) => item.sum),
         backgroundColor: "rgba(54, 162, 235, 0.6)",
         borderColor: "rgba(54, 162, 235, 1)",
         borderWidth: 1,
@@ -108,6 +134,7 @@ const AnalysisPage = () => {
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    onClick: handleChartClick,
     plugins: {
       legend: { position: "top" },
       tooltip: {
@@ -125,8 +152,65 @@ const AnalysisPage = () => {
       },
     },
   };
+  /* --------------------------------------------------------------------------------
+   차트 옵션 설정
+  -------------------------------------------------------------------------------- */
 
-  if (isLoading) return <Box p={3}>데이터를 불러오는 중입니다...</Box>;
+  /* --------------------------------------------------------------------------------
+   데이터 그리드 설정차트 옵션 설정
+  -------------------------------------------------------------------------------- */
+  const cntCategoryDataColumns = [
+    { field: "SEQ",
+      headerName: "No.",
+      width: 20,
+      align: "center",
+      headerAlign: "center",
+      renderCell: (params) => {
+        const rowIndex = params.api.getRowIndexRelativeToVisibleRows(params.id);
+        return rowIndex + 1;
+      }
+    },
+    { field: 'MONTH', headerName: '일자(월)', width: 185, align: "center", headerAlign: "center" },
+    { field: 'CATEGORY', headerName: '카테고리', width: 185, align: "center", headerAlign: "center" },
+    { field: 'CATEGORY_SUM',
+      headerName: '지출 금액(원)',
+      align: "center",
+      headerAlign: "center",
+      width: 183,
+      valueFormatter: (value) => `${value.toLocaleString()}원`
+    },
+    { field: 'CATEGORY_CNT', headerName: '카테고리 합계', align: "center", headerAlign: "center", width: 183 },
+  ];
+  /* --------------------------------------------------------------------------------
+   데이터 그리드 설정차트 옵션 설정
+  -------------------------------------------------------------------------------- */
+
+  /* --------------------------------------------------------------------------------
+   2번째 DataGrid 컬럼 (상세 결제 내역 리스트)
+  -------------------------------------------------------------------------------- */
+  const categoryDetailColumns = [
+    { field: "SEQ",
+      headerName: "No.",
+      width: 20,
+      align: "center",
+      headerAlign: "center",
+      renderCell: (params) => {
+        const rowIndex = params.api.getRowIndexRelativeToVisibleRows(params.id);
+        return rowIndex + 1;
+      }
+    },
+    { field: 'MONTH', headerName: '일자(월)', width: 160, align: "center", headerAlign: "center" },
+    { field: 'SERVICE_NM', headerName: '서비스명', width: 160, align: "center", headerAlign: "center" },
+    { field: 'CATEGORY', headerName: '카테고리', width: 160, align: "center", headerAlign: "center" },
+    { field: 'PRICE', headerName: '가격', width: 152, align: "center", headerAlign: "center", valueFormatter: (value) => `${value.toLocaleString()}` },
+    { field: 'CURRENCY', headerName: '통화', width: 152, align: "center", headerAlign: "center" },
+  ];
+  /* --------------------------------------------------------------------------------
+   2번째 DataGrid 컬럼 (상세 결제 내역 리스트)
+  -------------------------------------------------------------------------------- */
+  
+
+  if (isDataLoading) return <Box p={3}>데이터를 불러오는 중입니다...</Box>;
   if (isError) return (
     <Box p={3} color="error.main">
       <h3>데이터를 불러오는 데 실패했습니다.</h3>
@@ -138,57 +222,92 @@ const AnalysisPage = () => {
     <Box sx={{ maxWidth: 1200, margin: "0 auto", padding: "20px" }}>
       <Box mb={4}>
         <Typography variant="h4" fontWeight="bold" gutterBottom>
-          향후 12개월 지출 분석
+          지난 1년 지출 분석
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          이번 달부터 내년까지의 예상 구독 지출 흐름을 확인하세요.
+          지난 1년 동안의 실제 구독 지출 흐름을 확인하세요.
         </Typography>
       </Box>
 
       <Grid container spacing={3} mb={4}>
-        <Grid item xs={12} md={4}>
           <Card sx={{ p: 3, borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
             <Typography color="text.secondary" gutterBottom>
-              향후 1년간 총 예상 지출
+              1년간 총 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {analysisData.totalYearly.toLocaleString()}원
+              {avgResult.payforyear.toLocaleString()}원
             </Typography>
           </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
           <Card sx={{ p: 3, borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
             <Typography color="text.secondary" gutterBottom>
               월 평균 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {analysisData.averageMonthly.toLocaleString()}원
+              {avgResult.avg.toLocaleString()}원
             </Typography>
           </Card>
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 3, borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", border: "1px solid #e3f2fd" }}>
-            <Typography color="text.secondary" gutterBottom>
-              지출이 가장 큰 달 (주의 요망)
-            </Typography>
-            <Typography variant="h4" fontWeight="bold" color="error.main">
-              {analysisData.maxMonthName} {/* 동적으로 바뀐 라벨 이름 */}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" mt={0.5}>
-              ({analysisData.maxSpending.toLocaleString()}원 예정)
-            </Typography>
-          </Card>
-        </Grid>
       </Grid>
 
       <Card sx={{ p: 3, borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", height: "400px" }}>
         <Typography variant="h6" fontWeight="bold" mb={2}>
-          예산 흐름도
+          지출 흐름도 (막대를 클릭해보세요!)
         </Typography>
         <Box sx={{ height: "300px" }}>
-          <Bar data={chartData} options={chartOptions} />
+          <Bar ref={chartRef} data={chartData} options={chartOptions} />
         </Box>
       </Card>
+
+      {/* 지출 상세 내역 모달 */}
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: "bold" }}>
+          {selectedData.month} 지출 상세 내역
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="subtitle1" fontWeight="bold" mb={1} color="primary">
+            1. 카테고리별 요약 (행을 클릭하면 하단에 상세 내역이 나옵니다)
+          </Typography>
+          <Box sx={{ height: 350, width: '100%', bgcolor: 'background.paper', p: 3, my: 1, boxSizing: 'border-box' }}>
+            <DataGrid
+              rows={cntcategorydataresult}
+              columns={cntCategoryDataColumns}
+              getRowId={(row) => row.SEQ}
+              initialState={{ pagination: { paginationModel: { pageSize: 3 } } }}
+              pageSizeOptions={[3, 5]}
+              onRowClick={handleRowClick} 
+              sx={{ cursor: 'pointer' }}
+            />
+          </Box>
+          <Divider sx={{ my: 2 }} />
+          <Typography variant="subtitle1" fontWeight="bold" mb={1} color="secondary">
+            2. [{selectedCategory || "선택 없음"}] 카테고리 상세 소비 리스트
+          </Typography>
+          <Box sx={{ height: 350, width: '100%', bgcolor: 'background.paper' }}>
+            {selectedCategory ? (
+              <DataGrid
+                rows={categoryDetailResult}
+                columns={categoryDetailColumns}
+                getRowId={(row) => row.SEQ}
+                initialState={{ pagination: { paginationModel: { pageSize: 3 } } }}
+                pageSizeOptions={[3, 5]}
+                loading={isDetailLoading} // 데이터를 받아오는 동안 스피너 로딩 효과 작동
+                disableRowSelectionOnClick
+              />
+            ) : (
+              // 아직 카테고리를 클릭하지 않았을 때 안내 멘트 표시
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', border: '1px dashed #ccc', borderRadius: 1 }}>
+                <Typography color="text.secondary">
+                  상단의 카테고리 요약 표에서 원하는 항목을 클릭해 주세요.
+                </Typography>
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClose} variant="contained" color="primary">
+            확인
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

@@ -22,7 +22,7 @@ const ManageUserPage = () => {
   });
 
   const columns = [
-    { field: "SEQ", headerName: "ID", width: 60, headerAlign: "center", align: "center" },
+    { field: "SEQ", headerName: "ID", width: 60, headerAlign: "center", align: "center", filterable: false, sortable: false, renderCell: (params) => params.api.getRowIndexRelativeToVisibleRows(params.id) + 1,},
     { field: "ID", headerName: "아이디", width: 110, editable: true, headerAlign: "center", align: "center" },
     { field: "USER_NM", headerName: "이름", width: 130, editable: true, headerAlign: "center", align: "center"  },
     { 
