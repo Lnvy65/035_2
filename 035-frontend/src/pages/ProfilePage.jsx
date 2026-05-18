@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import useAuthStore from "../store/authStore";
 import { updateProfileApi } from "../api/userApi";
+import { selectcurnmApi } from "../api/mainpageApi";
 import styles from "../styles/ProfilePage.module.css";
 import { Lock, DollarSign, Settings, MapPin, Search } from "lucide-react";
 import DaumPostcode from "react-daum-postcode";
+import { TextField, MenuItem } from "@mui/material";
 
 const ProfilePage = () => {
   const { user, updateUser } = useAuthStore();
@@ -18,6 +20,13 @@ const ProfilePage = () => {
     new: "",
     confirm: "",
   });
+  const [prefCurrency, setPrefCurrency] = useState(localStorage.getItem("prefCurrency") || "KRW");
+
+  const { data: curNMData = [] } = useQuery({
+    queryKey: ["selectcurNM"],
+    queryFn: () => selectcurnmApi({}),
+  });
+  const currencies = Array.isArray(curNMData) ? curNMData : (curNMData?.result || []);
 
 
   // 파일 선택 핸들러
@@ -46,6 +55,8 @@ const ProfilePage = () => {
       alert("새 비밀번호가 일치하지 않습니다.");
       return;
     }
+
+    localStorage.setItem("prefCurrency", prefCurrency);
 
     // 수정된 API 파라미터 (주소 포함)
     updateProfileMutation.mutate({
@@ -136,6 +147,33 @@ const ProfilePage = () => {
             className={styles.input}
             placeholder="비밀번호 확인"
           />
+        </div>
+      </section>
+
+      {/* 선호 통화 설정 섹션 */}
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}><DollarSign size={20} /> 선호 통화 설정</h3>
+        <div className={styles.inputGroup}>
+          <label className={styles.label}>대시보드 표시 통화</label>
+          <TextField
+            select
+            value={prefCurrency}
+            onChange={(e) => setPrefCurrency(e.target.value)}
+            sx={{ width: "300px", "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+            SelectProps={{
+              MenuProps: {
+                PaperProps: {
+                  style: { maxHeight: 300 }, // 세로 스크롤 생성 (길이 제한)
+                },
+              },
+            }}
+          >
+            <MenuItem value="KRW">KRW (한국 원)</MenuItem>
+            {currencies.filter(c => c.currency !== "KRW").map(c => (
+              <MenuItem key={c.currency} value={c.currency}>{c.currency} ({c.cur_nm})</MenuItem>
+            ))}
+          </TextField>
+          <p className={styles.helperText}>* 메인 페이지 및 분석 페이지의 구독 금액이 해당 통화로 변환되어 표시됩니다.</p>
         </div>
       </section>
 

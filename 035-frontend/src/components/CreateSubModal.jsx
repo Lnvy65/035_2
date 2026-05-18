@@ -4,7 +4,7 @@ import {
   TextField, Box, InputAdornment, Button, MenuItem 
 } from "@mui/material";
 import useAuthStore from "../store/authStore";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { selectcurnmApi } from "../api/mainpageApi";
 
 
@@ -23,7 +23,7 @@ const CYCLES = [1, 3, 6, 12];
 const INITIAL_STATE = {
   SERVICE_NM: "",
   MONTHLY_PRICE: "",
-  CUR_NM: "",
+  CUR_NM: "KRW",
   ANCHOR_DAY: "",
   BILLING_CYCLE: "",
   CATEGORY: "",
@@ -48,14 +48,17 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
       if (!isConfirmed) return;
     }
 
-    // const priceNum = String(form.MONTHLY_PRICE).replace(/,/g, "");
-    //임시 - 공유 사용자 수에 따른 가격 분할 로직 추가
     const originalPrice = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
     const users = Number(form.SHARED_USERS) || 1;
-    const priceNum = Math.round(originalPrice / users);
+    
+    let priceNum = originalPrice / users;
+    if (form.CUR_NM === 'KRW' || form.CUR_NM === 'JPY') {
+      priceNum = Math.floor(priceNum); // 원/엔화는 소수점 버림
+    } else {
+      priceNum = Math.floor(priceNum * 100) / 100; // 외화는 소수점 2자리 내림
+    }
 
     const { SHARED_USERS, ...saveData } = form;
-
 
     onSave({ 
       ...saveData, 
@@ -63,20 +66,16 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
       userName: user?.username
     });
     setForm(INITIAL_STATE);
-    // onSave({ 
-    //   ...form, 
-    //   MONTHLY_PRICE: priceNum, 
-    //   userName: user?.username 
-    // });
-    // setForm(INITIAL_STATE);
   };
 
   // 입력 핸들러 공통화
   const handleChange = (field) => (e) => {
     let value = e.target.value;
     if (field === 'MONTHLY_PRICE') {
-      const rawValue = value.replace(/[^0-9]/g, "");
-      value = rawValue ? Number(rawValue).toLocaleString() : "";
+      const rawValue = value.replace(/[^0-9.]/g, ""); // 소수점 허용
+      const parts = rawValue.split('.');
+      parts[0] = parts[0] ? Number(parts[0]).toLocaleString() : "";
+      value = parts.length > 1 ? parts[0] + '.' + parts[1].slice(0, 4) : parts[0]; // 입력은 정밀도를 위해 소수점 4자리까지
     } 
     // 공유 사용자 수는 최소 1명으로 제한
     else if (field === 'SHARED_USERS') {
@@ -88,7 +87,18 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
   const getCalculatedPrice = () => {
     const price = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
     const users = Number(form.SHARED_USERS) || 1;
-    return price > 0 && users > 1 ? Math.floor(price / users).toLocaleString() : "";
+    if (price > 0 && users > 1) {
+      let calc = price / users;
+      if (form.CUR_NM === 'KRW' || form.CUR_NM === 'JPY') {
+        calc = Math.floor(calc);
+      } else {
+        calc = Math.floor(calc * 100) / 100;
+      }
+      const parts = String(calc).split('.');
+      parts[0] = Number(parts[0]).toLocaleString();
+      return parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+    }
+    return "";
   };
 
   const { data: curNMData = [], isLoading: iscurNMLoading, refetch: refetchCurNM } = useQuery({
@@ -127,7 +137,7 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             fullWidth 
             value={form.MONTHLY_PRICE} 
             onChange={handleChange('MONTHLY_PRICE')}
-            InputProps={{ endAdornment: <InputAdornment position="end"></InputAdornment> }} 
+            InputProps={{ endAdornment: <InputAdornment position="end">{form.CUR_NM === "KRW" ? "원" : form.CUR_NM}</InputAdornment> }} 
           />
           
           <TextField
@@ -135,7 +145,37 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             label="통화"
             fullWidth
             value={form.CUR_NM}
-            onChange={handleChange('CUR_NM')}
+            onChange={(e) => {
+              const newCurrency = e.target.value;
+              const oldCurrency = form.CUR_NM || "KRW";
+              let updatedPrice = form.MONTHLY_PRICE;
+
+              if (currencies.length > 0) {
+                const oldCurrencyData = currencies.find(c => c.currency === oldCurrency);
+                const newCurrencyData = currencies.find(c => c.currency === newCurrency);
+
+                // DB에 해당 통화가 없으면 기본값인 1(기준 통화)로 처리
+                const oldRate = oldCurrencyData && oldCurrencyData.exchange_rate ? Number(oldCurrencyData.exchange_rate) : 1;
+                const newRate = newCurrencyData && newCurrencyData.exchange_rate ? Number(newCurrencyData.exchange_rate) : 1;
+
+                const currentPriceRaw = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
+                
+                if (!isNaN(currentPriceRaw) && currentPriceRaw > 0) {
+                  let convertedPrice = (currentPriceRaw * oldRate) / newRate;
+                  // 원/엔화는 정수, 나머지는 소수점 2자리까지
+                  if (newCurrency === 'KRW' || newCurrency === 'JPY') {
+                    convertedPrice = Math.round(convertedPrice);
+                  } else {
+                    convertedPrice = Math.round(convertedPrice * 10000) / 10000; // 환율 변환 시 소수점 4자리까지 유지
+                  }
+                  const parts = String(convertedPrice).split('.');
+                  parts[0] = Number(parts[0]).toLocaleString();
+                  updatedPrice = parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+                }
+              }
+              
+              setForm({...form, CUR_NM: newCurrency, MONTHLY_PRICE: updatedPrice});
+            }}
             SelectProps={{
               MenuProps: {
                 PaperProps: {
@@ -160,7 +200,7 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             fullWidth 
             value={form.SHARED_USERS} 
             onChange={handleChange('SHARED_USERS')}
-            helperText={getCalculatedPrice() ? `1인당 청구 금액: ${getCalculatedPrice()}원` : "나 혼자 사용하는 경우 1을 입력하세요."}
+            helperText={getCalculatedPrice() ? `1인당 청구 금액: ${getCalculatedPrice()}${form.CUR_NM === "KRW" ? "원" : ` ${form.CUR_NM}`}` : "나 혼자 사용하는 경우 1을 입력하세요."}
             inputProps={{ min: 1 }}
           />
 

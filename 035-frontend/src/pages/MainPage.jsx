@@ -1,10 +1,24 @@
 import useAuthStore from "../store/authStore";
 import styles from '../styles/MainPage.module.css';
-import { selectsumApi, selectmonthlysumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi } from "../api/mainpageApi";
+import { selectsumApi, selectdateApi, selectsublistApi, selectsubchartApi, deleteSubApi, insertSubApi, updateSubApi, selectcurnmApi } from "../api/mainpageApi";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { DataGrid } from "@mui/x-data-grid";
-import { TextField, InputAdornment, Button } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
+import { 
+  Dialog, 
+  DialogTitle, 
+  DialogContent, 
+  DialogActions, 
+  TextField,
+  Box,
+  InputAdornment,
+  Button, 
+  IconButton, 
+  Chip,
+  TextField as MuiTextField,
+  MenuItem
+} from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
@@ -13,228 +27,632 @@ import { generateColors } from "../utils/constants";
 import { useSubColumns } from "../hooks/useSubColumn";
 import CreateSubModal from "../components/CreateSubModal";
 import EditSubModal from "../components/EditSubModal";
+// [수정된 부분] 대시보드 스토어 임포트
+import useDashboardStore from "../store/dashboardStore";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
-
-// 💡 [Refactor] Query Key를 계층화하여 관리를 쉽게 만듭니다.
-const QUERY_KEYS = {
-  all: ["subscription"],
-  sum: (username) => ["subscription", "sum", username],
-  monthlySum: (username) => ["subscription", "monthlySum", username],
-  date: (username) => ["subscription", "date", username],
-  list: (username) => ["subscription", "list", username],
-  chart: (username) => ["subscription", "chart", username],
-};
 
 const MainPage = () => {
   const user = useAuthStore((state) => state.user);
   const queryClient = useQueryClient();
   const [searchText, setSearchText] = useState("");
 
+  // 수정 팝업 및 데이터 관리를 위한 State 추가
   const [openEdit, setOpenEdit] = useState(false);
-  const [editData, setEditData] = useState(null); // 원본 데이터만 유지
+  const [editData, setEditData] = useState(null);
+  const [oldEditData, setOldEditData] = useState(null);
 
+  // 생성 팝업 및 데이터 관리를 위한 State 추가
   const [openCreate, setOpenCreate] = useState(false);
 
-  const userName = user?.username;
-
-  // --- Queries ---
-  const { data: sumData, isLoading: isSumLoading } = useQuery({
-    queryKey: QUERY_KEYS.sum(userName),
-    queryFn: () => selectsumApi({ userName }),
-    enabled: !!userName,
-  });
-  const totalSumResult = sumData?.result?.[0] || { sum: 0, count: 0 };
-
-  const { data: monthlySumResultsumData, isLoading: isMonthlySumLoading } = useQuery({
-  queryKey: QUERY_KEYS.monthlySum(userName),
-  queryFn: () => selectmonthlysumApi({ userName }),
-  enabled: !!userName,
-  });
-  const monthlySumResult = monthlySumResultsumData?.result?.[0] || { sum: 0, count: 0 };
-
-  const { data: dateData, isLoading: isdateLoading } = useQuery({
-    queryKey: QUERY_KEYS.date(userName),
-    queryFn: () => selectdateApi({ userName }),
-    enabled: !!userName,
-  });
-  const dateresult = dateData?.result?.[0] || { NEXT_BILLING_DT: 0, SERVICE_NM: 0 };
-
-  const { data: subListData = [], isLoading: issubListLoading, refetch: refetchSubList } = useQuery({
-    queryKey: QUERY_KEYS.list(userName),
-    queryFn: () => selectsublistApi({ userName }),
-    enabled: !!userName,
-  });
-
-  const { data: subchartData, isLoading: issubchartLoading } = useQuery({
-    queryKey: QUERY_KEYS.chart(userName),
-    queryFn: () => selectsubchartApi({ userName }),
-    enabled: !!userName,
-  });
-  const chartResult = subchartData?.result || [];
-
-  // --- Mutations ---
-  // 💡 [Refactor] 캐시 무효화를 'subscription' 공통 키 하나로 처리
-  const invalidateAllQueries = () => {
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.all });
+  // 차트 색상 팔레트 (필요에 따라 추가/수정 가능)
+  const generateColors = (count) => {
+    return Array.from({ length: count }, (_, i) => {
+      const hue = (i * (360 / count)) % 360;
+      return `hsl(${hue}, 70%, 60%)`; // 채도 70%, 명도 60%로 일관성 유지
+    });
   };
 
+  // 신규 등록을 위한 임시 상태
+  const [newSub, setNewSub] = useState({
+    username: "",
+    SERVICE_NM: "",
+    MONTHLY_PRICE: "",
+    ANCHOR_DAY: "",
+    BILLING_CYCLE: "",
+    CATEGORY: "",
+  });
+
+  // 서비스별 기본 가격 정보
+  const PRESET_SERVICES = [
+    { name: "YouTube Premium", price: 14900, category: "OTT" },
+    { name: "Netflix", price: 17000, category: "OTT" },
+    { name: "Spotify", price: 10900, category: "음악" },
+    { name: "Disney+", price: 9900, category: "OTT" },
+    { name: "Coupang Wow", price: 7890, category: "쇼핑" },
+    { name: "직접 입력", price: "", category: "" },
+  ];
+
+  // 1~31일 배열 생성
+  const DAYS = Array.from({ length: 31 }, (_, i) => i + 1);
+
+  // 결제 주기 배열 생성
+  const CYCLES = [1, 3, 6, 12];
+
+  // 통화 목록 조회 (환율 계산용)
+  const { data: curNMData = [] } = useQuery({
+    queryKey: ["selectcurNM"],
+    queryFn: () => selectcurnmApi({}),
+    refetchOnWindowFocus: false,
+  });
+  const currencies = Array.isArray(curNMData) ? curNMData : (curNMData?.result || []);
+  const prefCurrency = localStorage.getItem("prefCurrency") || "KRW";
+
+  /* --------------------------------------------------------------------------------
+   columns
+  -------------------------------------------------------------------------------- */
+  const columns = [
+    { field: "SEQ", headerName: "seq", width: 20, align: "center", headerAlign: "center" },
+    { 
+      field: "display_id", // 필드명을 SEQ와 다르게 주어 혼동을 방지합니다.
+      headerName: "No.", 
+      width: 50, // 번호가 세 자릿수가 될 수 있으니 여유를 좀 줍니다.
+      align: "center", 
+      headerAlign: "center",
+      sortable: false, // 단순 순번이므로 정렬 기능은 끄는 게 자연스럽습니다.
+      renderCell: (params) => {
+        // 현재 행의 인덱스를 가져와서 1부터 시작하게 만듭니다.
+        const rowIndex = params.api.getRowIndexRelativeToVisibleRows(params.id);
+        return <span>{rowIndex + 1}</span>;
+      }
+    },
+    { field: "SERVICE_NM", headerName: "서비스 이름", width: 200, flex: 1, editable: true, headerAlign: "center", align: "center" },
+    { 
+      field: "MONTHLY_PRICE", 
+      headerName: "구독료", 
+      width: 100, 
+      editable: false, 
+      headerAlign: "center", 
+      align: "center",
+      renderCell: (params) => {
+        const price = params.row.MONTHLY_PRICE;
+        
+        // 백엔드에서 넘겨주는 실제 영어 통화 코드(CURRENCY)를 바로 사용합니다.
+        const displayCurrency = params.row.CURRENCY || "KRW";
+        const currencySuffix = displayCurrency === "KRW" ? "원" : displayCurrency;
+        
+        if (!price) return `0 ${currencySuffix}`;
+        return `${Number(price).toLocaleString()} ${currencySuffix}`;
+      }
+    },
+    { field: "NEXT_BILLING_DT", headerName: "결제 예정일", width: 100, editable: false, headerAlign: "center", align: "center" },
+    { 
+      field: "ANCHOR_DAY", 
+      headerName: "결제일", 
+      width: 90, 
+      editable: false, 
+      headerAlign: "center", 
+      align: "center",
+      valueFormatter: (value) => {
+        if (!value) return "-";
+        return value === 31 || value === "31" ? "매월 말일" : `매월 ${value}일`;
+      }
+    },
+    { 
+      field: "BILLING_CYCLE", 
+      headerName: "결제 주기", 
+      width: 90, 
+      editable: false, 
+      headerAlign: "center", 
+      align: "center",
+      valueFormatter: (value) => (value ? `${value}개월` : "-")
+    },
+    { field: "CATEGORY", headerName: "카테고리", width: 100, editable: false, headerAlign: "center", align: "center" },
+    { 
+      field: "USE_YN", 
+      headerName: "상태", 
+      width: 90, // Chip이 들어가므로 너비를 조금 넓혔습니다.
+      editable: false, 
+      headerAlign: "center", 
+      align: "center",
+      renderCell: (params) => {
+        // 데이터가 'Y' 또는 '사용중'인 경우를 체크
+        const isActive = params.value === 'Y' || params.value === '사용중';
+        
+        return (
+          <Chip 
+            label={isActive ? '사용 중' : '만료됨'} 
+            color={isActive ? 'success' : 'error'} 
+            variant="outlined" 
+            size="small"
+            sx={{ fontWeight: 'bold' }} // 가독성을 위해 추가
+          />
+        );
+      }
+    },
+    { field: "CREATE_DT", headerName: "생성일", width: 150, align: "center", headerAlign: "center" },
+    { field: "UPDATE_DT", headerName: "수정일", width: 150, align: "center", headerAlign: "center" },
+    {
+      field: "actions",
+      headerName: "삭제",
+      width: 70,
+      sortable: false,
+      align: "center",
+      headerAlign: "center",
+      renderCell: (params) => {
+        return (
+          <IconButton onClick={(e) => { e.stopPropagation(); handleDelete(params.row); }}
+          sx={{
+            transition: 'color 0.2s', // 부드러운 색상 변경
+            '&:hover': {
+              color: '#d32f2f', // 마우스를 올렸을 때 빨간색 (MUI 기본 에러 색상)
+              backgroundColor: 'rgba(211, 47, 47, 0.04)', // 살짝 붉은 잔상 효과 (선택사항)
+            },
+          }}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        );
+      },
+    }
+  ];
+
+
+  /* --------------------------------------------------------------------------------
+   월간 구독 금액, 구독 수 조회
+  -------------------------------------------------------------------------------- */
+  const { data: sumData = [], isLoading: isSumLoading, refetch: refetchSum, isFetching: isSumFetching } = useQuery(
+    {
+      queryKey: ["selectsum", user?.username],
+      queryFn: () => selectsumApi({ userName: user?.username }),
+      enabled: !!user?.username, // userName이 있을 때만 쿼리 실행
+      refetchOnWindowFocus: false,
+    }
+  );
+  const sumresult = sumData?.result?.[0] || { sum: 0, count: 0 };
+  
+  let displayedSum = sumresult.sum || 0;
+  if (prefCurrency !== "KRW" && currencies.length > 0) {
+    const targetCur = currencies.find((c) => c.currency === prefCurrency);
+    const targetRate = targetCur?.exchange_rate ? Number(targetCur.exchange_rate) : 1;
+    if (targetRate > 0) {
+      displayedSum = Math.floor((displayedSum / targetRate) * 100) / 100;
+    }
+  }
+
+
+  /* --------------------------------------------------------------------------------
+   결제 예정일 조회
+  -------------------------------------------------------------------------------- */
+    const { data: dateData = [], isLoading: isdateLoading, refetch: refetchDate, isFetching: isDateFetching } = useQuery(
+    {
+      queryKey: ["selectdate", user?.username],
+      queryFn: () => selectdateApi({ userName: user?.username }),
+      enabled: !!user?.username, // userName이 있을 때만 쿼리 실행
+      refetchOnWindowFocus: false,
+    }
+  );
+  const dateresult = dateData?.result?.[0] || { NEXT_BILLING_DT: 0, SERVICE_NM: 0 };
+
+
+  /* --------------------------------------------------------------------------------
+   결제 예정일 조회
+  -------------------------------------------------------------------------------- */
+    const { data: subListData = [], isLoading: issubListLoading, refetch: refetchSubList, isFetching: isSubListFetching } = useQuery(
+    {
+      queryKey: ["selectsublist", user?.username],
+      queryFn: () => selectsublistApi({ userName: user?.username }),
+      enabled: !!user?.username, // userName이 있을 때만 쿼리 실행
+      refetchOnWindowFocus: false,
+    }
+  );
+
+
+  /* --------------------------------------------------------------------------------
+   지출 차트 조회
+  -------------------------------------------------------------------------------- */
+    const { data: subchartData = [], isLoading: issubchartLoading, refetch: refetchSubChart, isFetching: isSubChartFetching } = useQuery(
+    {
+      queryKey: ["selectsubchart", user?.username],
+      queryFn: () => selectsubchartApi({ userName: user?.username }),
+      enabled: !!user?.username,
+      refetchOnWindowFocus: false,
+    }
+  );
+  const chartResult = subchartData?.result || [];
+
+
+  /* --------------------------------------------------------------------------------
+   삭제
+  -------------------------------------------------------------------------------- */
   const handleDelete = (row) => {
     if (window.confirm(`"${row.SERVICE_NM}" 서비스를 삭제하시겠습니까?`)) {
-      deleteSubApi({ seq: row.SEQ }).then(invalidateAllQueries);
+      deleteSubApi({ seq: row.SEQ }).then(() => {
+        queryClient.invalidateQueries({ queryKey: ["selectsum"] });
+        queryClient.invalidateQueries({ queryKey: ["selectdate"] });
+        queryClient.invalidateQueries({ queryKey: ["selectsublist"] });
+      });
     }
   };
 
-  const columns = useSubColumns(handleDelete);
 
+  /* --------------------------------------------------------------------------------
+   생성
+  -------------------------------------------------------------------------------- */
   const createMutation = useMutation({
     mutationFn: insertSubApi,
     onSuccess: () => {
-      invalidateAllQueries();
+      queryClient.invalidateQueries({ queryKey: ["selectsum"] });
+      queryClient.invalidateQueries({ queryKey: ["selectdate"] });
+      queryClient.invalidateQueries({ queryKey: ["selectsublist"] });
+      queryClient.invalidateQueries({ queryKey: ["selectsubchart"] });
       setOpenCreate(false);
       alert("생성되었습니다.");
     },
   });
 
+  /* --------------------------------------------------------------------------------
+   수정
+  -------------------------------------------------------------------------------- */
   const updateMutation = useMutation({
     mutationFn: updateSubApi,
     onSuccess: () => {
-      invalidateAllQueries();
+      queryClient.invalidateQueries({ queryKey: ["selectsum"] });
+      queryClient.invalidateQueries({ queryKey: ["selectdate"] });
+      queryClient.invalidateQueries({ queryKey: ["selectsublist"] });
+      queryClient.invalidateQueries({ queryKey: ["selectsubchart"] });
       setOpenEdit(false);
       alert("수정되었습니다.");
     },
   });
 
-  // --- Handlers ---
+
+  /* --------------------------------------------------------------------------------
+    수정화면팝업 핸들러
+  -------------------------------------------------------------------------------- */  
   const handleCellClick = (params) => {
+    // 1. 삭제 버튼(actions) 클릭 시에는 로직 방지 (이미 IconButton에서 e.stopPropagation 처리됨)
     if (params.field === 'actions') return;
-    // 💡 [Refactor] 포맷팅 로직은 UI/Modal 컴포넌트로 위임하고, 원본 데이터만 넘깁니다.
     setEditData(params.row);
     setOpenEdit(true);
   };
 
+
+
+  /* --------------------------------------------------------------------------------
+    도넛 차트
+  -------------------------------------------------------------------------------- */  
+  const chartDataValues = chartResult.map(item => {
+    let val = item.TOTAL_PRICE || 0;
+    if (prefCurrency !== "KRW" && currencies.length > 0) {
+      const targetCur = currencies.find((c) => c.currency === prefCurrency);
+      const targetRate = targetCur?.exchange_rate ? Number(targetCur.exchange_rate) : 1;
+      if (targetRate > 0) {
+        val = Math.floor((val / targetRate) * 100) / 100;
+      }
+    }
+    return val;
+  });
+
+  const data = {
+    // labels: ['work', 'OTT', 'music'] 형태의 배열 생성
+    labels: chartResult.map(item => item.CATEGORY),
+    datasets: [
+      {
+        label: '구독 지출',
+        data: chartDataValues,
+        backgroundColor: generateColors(chartResult.length),
+        borderWidth: 1,
+        cutout: '70%',
+      },
+    ],
+  };
+
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false, // 컨테이너 크기에 맞춤
+    plugins: {
+      legend: {
+        position: 'bottom', // 범례 위치 (top, bottom, left, right)
+        labels: {
+          usePointStyle: true, // 범례 모양을 원형으로
+          padding: 20,
+        },
+      },
+      tooltip: {
+        enabled: true, // 마우스 호버 시 툴팁 표시
+        callbacks: {
+          label: (context) => {
+            return ` ${context.parsed.toLocaleString()} ${prefCurrency === "KRW" ? "원" : prefCurrency}`;
+          }
+        }
+      },
+    },
+  };
+
+  // 팝업 닫기 핸들러
+  const handleClose = () => {
+    setOpenCreate(false);
+    setNewSub({ 
+      username: "",
+      SERVICE_NM: "",
+      MONTHLY_PRICE: "",
+      ANCHOR_DAY: "",
+      BILLING_CYCLE: "",
+      CATEGORY: "", 
+    }); // 입력폼 초기화
+  };
+
   const handleCloseEdit = () => {
     setOpenEdit(false);
-    setTimeout(() => setEditData(null), 200); // 애니메이션 종료 후 초기화
+    setTimeout(() => setEditData(null), 200); 
   };
- 
-  const filteredRows = useMemo(() => {
-    if (!subListData.length) return [];
-    return subListData.filter((row) => row.SERVICE_NM.toLowerCase().includes(searchText.toLowerCase()));
-  }, [subListData, searchText]);
 
-  const chartOptions = useMemo(() => ({
-    responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { position: 'bottom', labels: { usePointStyle: true, padding: 20 } } },
-  }), []);
+  // 수정 날짜 형식 자동 하이픈 추가 핸들러 (YYYY-MM-DD)
+  const handleDateChange = (e) => {
+    const value = e.target.value.replace(/\D/g, "");
+    const formattedValue = value
+      .replace(/^(\d{4})(\d{2})(\d{2})$/, "$1-$2-$3")
+      .replace(/^(\d{4})(\d{2})$/, "$1-$2")
+      .substring(0, 10);
 
-  const chartDataConfig = useMemo(() => ({
-    labels: chartResult.map(item => item.CATEGORY),
-    datasets: [{
-      label: '구독 지출',
-      data: chartResult.map(item => item.TOTAL_PRICE),
-      backgroundColor: generateColors(chartResult.length),
-      borderWidth: 1,
-      cutout: '70%',
-    }],
-  }), [chartResult]);
+    // 상태 업데이트
+    setEditData({ ...editData, NEXT_BILLING_DT: formattedValue });
+  };
 
-  // 현재 월 이름을 한글로 가져오기
-  const today = new Date();
-  const monthNameKR = today.toLocaleString('ko-KR', { month: 'long' });
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.header}>
-        <h2>안녕하세요, {userName}님!</h2>
-        <p style={{color: '#817d7d'}}>구독 내역을 확인해 보세요.</p>
-      </div>
+  const handleDateBlur = (e) => {
+    let value = e.target.value.replace(/\D/g, "");
+    if (!value) return;
 
-      <div className={styles.summarySection}>
-        {/* 여기 고쳐야됨 */}
-        <div className={`${styles.card} ${styles.summaryCard}`}>
-          <p style={{color: '#817d7d'}}>활성화된 {monthNameKR} 구독 금액</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{monthlySumResult.sum?.toLocaleString() || 0}원</p>
-        </div>
-        {/* 여기 고쳐야됨 */}
-        <div className={`${styles.card} ${styles.summaryCard}`}>
-          <p style={{color: '#817d7d'}}>활성화된 총 구독 금액</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{totalSumResult.sum?.toLocaleString() || 0}원</p>
-        </div>
-        <div className={`${styles.card} ${styles.summaryCard}`}>
-          <p style={{color: '#817d7d'}}>활성화된 구독 수</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{totalSumResult.count || 0}개</p>
-        </div>
-        <div className={`${styles.card} ${styles.summaryCard}`}>
-          <p style={{color: '#817d7d'}}>다음 결제 예정</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>
-            {dateresult.NEXT_BILLING_DT ? `${dateresult.SERVICE_NM} ${dateresult.NEXT_BILLING_DT}` : '정보 없음'}
-          </p>
-        </div>
-      </div>
+    let year, month, day;
 
-      <div className={styles.mainContent}>
-        <div className={`${styles.card} ${styles.listContainer}`}>
-          <div className={styles.listHeader}>
-            <h4>내 구독 목록</h4>
-            <div className={styles.buttonGroup}>
-              <TextField 
-                size="small" variant="outlined" placeholder="서비스 이름 검색..." 
-                value={searchText} onChange={(e) => setSearchText(e.target.value)} 
-                InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: '#999' }} /></InputAdornment>) }}
-                sx={{ width: '220px', '& .MuiOutlinedInput-root': { borderRadius: '8px', height: '36px'} }}
-              />
-              <Button variant="outlined" size="small" onClick={() => refetchSubList()} sx={{ borderRadius: '8px', height: '36px', textTransform: 'none', borderColor: '#e5e7eb', color: '#666', minWidth: '80px' }}>새로고침</Button>
-              <button className={styles.addButton} onClick={() => setOpenCreate(true)}><span style={{ marginRight: '4px' }}>+</span> 추가</button>
+    // 1. 날짜 데이터 추출
+    if (value.length === 6) {
+      year = parseInt("20" + value.slice(0, 2), 10);
+      month = parseInt(value.slice(2, 4), 10);
+      day = parseInt(value.slice(4, 6), 10);
+    } else if (value.length === 8) {
+      year = parseInt(value.slice(0, 4), 10);
+      month = parseInt(value.slice(4, 6), 10);
+      day = parseInt(value.slice(6, 8), 10);
+    } else {
+      const parts = e.target.value.split("-");
+      if (parts.length !== 3) return;
+      year = parseInt(parts[0], 10);
+      month = parseInt(parts[1], 10);
+      day = parseInt(parts[2], 10);
+    }
 
-              <CreateSubModal 
-                open={openCreate} 
-                onClose={() => setOpenCreate(false)} 
-                onSave={(data) => createMutation.mutate(data)}
-                isLoading={createMutation.isPending}
-                existingSubscriptions={subListData}
-              />
-              
-              <EditSubModal 
-                open={openEdit} 
-                editData={editData}
-                onClose={handleCloseEdit} 
-                onSave={(data) => updateMutation.mutate({ ...data, userName })}
-                isLoading={updateMutation.isPending}
+    // 2. 유효성 보정 (월) - 00이 들어오면 01로, 12보다 크면 12로
+    if (month > 12) month = 12;
+    if (month < 1 || isNaN(month)) month = 1; // ✨ 00 또는 빈 값일 때 01로 변경
+
+    // 3. 해당 월의 마지막 날짜 계산 (보정된 month 기준)
+    const lastDayInMonth = new Date(year, month, 0).getDate();
+
+    // 4. 유효성 보정 (일)
+    if (day > lastDayInMonth) day = lastDayInMonth;
+    if (day < 1 || isNaN(day)) day = 1;
+
+    // 5. [핵심] 입력한 일자가 해당 월의 말일이면 31(말일)로 세팅
+    const matchedAnchorDay = (day === lastDayInMonth) ? 31 : day;
+
+    const finalDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+
+    setEditData({ 
+      ...editData, 
+      NEXT_BILLING_DT: finalDate,
+      ANCHOR_DAY: matchedAnchorDay 
+    });
+  };
+
+  // [수정된 부분] 위젯 실시간 미리보기 및 스토어 연동 드래그 로직 추가
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [draggedId, setDraggedId] = useState(null);
+  const { widgets, setWidgets, toggleWidget } = useDashboardStore();
+
+  const handleDragStart = (e, id) => {
+    if (!isEditMode) return;
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", id);
+    setTimeout(() => e.target.style.opacity = '0.5', 0);
+  };
+
+  const handleDragEnter = (e, targetId) => {
+    if (!isEditMode || !draggedId || draggedId === targetId) return;
+
+    const draggedIndex = widgets.findIndex((w) => w.id === draggedId);
+    const targetIndex = widgets.findIndex((w) => w.id === targetId);
+
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    const newWidgets = [...widgets];
+    const [draggedItem] = newWidgets.splice(draggedIndex, 1);
+    newWidgets.splice(targetIndex, 0, draggedItem);
+    
+    setWidgets(newWidgets);
+  };
+
+  const handleDragEnd = (e) => {
+    e.target.style.opacity = '1';
+    setDraggedId(null);
+  };
+
+  const handleDragOver = (e) => {
+    if (!isEditMode) return;
+    e.preventDefault(); 
+  };
+
+  const handleDrop = (e, targetId) => {
+    if (!isEditMode) return;
+    e.preventDefault();
+    setDraggedId(null);
+  };
+
+  const renderWidget = (widget) => {
+    if (!widget.visible) return null;
+
+    let content = null;
+    switch (widget.id) {
+      case 'totalAmount':
+        content = (
+          <div className={styles.summaryCardInner}>
+            <p style={{color: '#817d7d'}}>활성화된 총 구독 금액</p>
+            <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{displayedSum.toLocaleString()} {prefCurrency === "KRW" ? "원" : prefCurrency}</p>
+          </div>
+        );
+        break;
+      case 'activeCount':
+        content = (
+          <div className={styles.summaryCardInner}>
+            <p style={{color: '#817d7d'}}>활성화된 구독 수</p>
+            <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{sumresult.count || 0}개</p>
+          </div>
+        );
+        break;
+      case 'nextBilling':
+        content = (
+          <div className={styles.summaryCardInner}>
+            <p style={{color: '#817d7d'}}>다음 결제 예정</p>
+            <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>
+              {dateresult.NEXT_BILLING_DT ? `${dateresult.SERVICE_NM} - ${dateresult.NEXT_BILLING_DT}` : '정보 없음'}
+            </p>
+          </div>
+        );
+        break;
+      case 'subList':
+        content = (
+          <div className={styles.listContainerInner}>
+            <div className={styles.listHeader}>
+              <h4>내 구독 목록</h4>
+              <div className={styles.buttonGroup}>
+                <TextField 
+                  size="small" variant="outlined" placeholder="서비스 이름 검색..." 
+                  value={searchText} onChange={(e) => setSearchText(e.target.value)} 
+                  InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: '#999' }} /></InputAdornment>) }}
+                  sx={{ width: '220px', '& .MuiOutlinedInput-root': { borderRadius: '8px', height: '36px'} }}
+                />
+                <Button variant="outlined" size="small" onClick={() => refetchSubList()} sx={{ borderRadius: '8px', height: '36px', textTransform: 'none', borderColor: '#e5e7eb', color: '#666', minWidth: '80px' }}>새로고침</Button>
+                <button className={styles.addButton} onClick={() => setOpenCreate(true)}><span style={{ marginRight: '4px' }}>+</span> 추가</button>
+
+                <CreateSubModal 
+                  open={openCreate} 
+                  onClose={() => setOpenCreate(false)} 
+                  onSave={(data) => createMutation.mutate(data)}
+                  isLoading={createMutation.isPending}
+                  existingSubscriptions={subListData}
+                />
+                
+                <EditSubModal 
+                  open={openEdit} 
+                  editData={editData}
+                  onClose={handleCloseEdit} 
+                  onSave={(data) => updateMutation.mutate({ ...data, userName: user?.username })}
+                  isLoading={updateMutation.isPending}
+                />
+              </div>
+            </div>
+            
+            <div className={styles.tablePlaceholder}>
+              <DataGrid 
+                rows={subListData.filter(row => row.SERVICE_NM.toLowerCase().includes(searchText.toLowerCase()))} 
+                getRowId={(row) => row.SEQ} 
+                columns={columns} 
+                onCellClick={handleCellClick}
+                loading={issubListLoading} 
+                sx={{ cursor: 'pointer' }}
+                initialState={{ columns: { columnVisibilityModel: { SEQ: false } } }}
               />
             </div>
           </div>
-          
-          <div className={styles.tablePlaceholder}>
-            <DataGrid 
-              rows={filteredRows} getRowId={(row) => row.SEQ} columns={columns} onCellClick={handleCellClick}
-              loading={issubListLoading} sx={{ cursor: 'pointer' }}
-              initialState={{ columns: { columnVisibilityModel: { SEQ: false } } }}
-            />
-          </div>
-        </div>
-
-        <div className={styles.sidebar}>
-          <div className={`${styles.card} ${styles.chartCard}`}>
+        );
+        break;
+      case 'chartArea':
+        content = (
+          <div className={styles.chartCardInner}>
             <h4>활성화된 구독 지출 분포</h4>
-            <div style={{ height: '250px', marginTop: '20px' }}>
+            <div style={{ flex: 1, minHeight: 0, marginTop: '20px' }}>
               {chartResult.length > 0 ? (
-                <Doughnut data={chartDataConfig} options={chartOptions} />
+                <Doughnut data={data} options={options} />
               ) : (
                 <div className={styles.noData}>
+                  {/* MUI 아이콘 등을 추가하면 더 예쁩니다 */}
                   <p>등록된 구독 내역이 없습니다.</p>
                   <p style={{ fontSize: '12px', marginTop: '4px' }}>새로운 구독을 추가해 보세요!</p>
                 </div>
               )}
             </div>
           </div>
-          <div className={`${styles.card} ${styles.activityCard}`}>
+        );
+        break;
+      case 'activityArea':
+        content = (
+          <div className={styles.activityCardInner}>
             <h4>최근 활동 및 알림</h4>
             <div className={styles.activityList}>
-              <p>기능 준비 중입니다.</p>
+              <p>뭘 적는게 좋을까요?</p>
+              <p>구독 추가/수정/삭제 시 알림이 뜨면 좋을 것 같은데, 일단은 고정된 문구로 넣어봤습니다.</p>
+              <p>위 문구는 자동완성 입니다.</p>
             </div>
           </div>
+        );
+        break;
+      default:
+        return null;
+    }
+
+    return (
+      <div
+        key={widget.id}
+        className={`${styles.card} ${styles[widget.type]} ${isEditMode ? styles.editModeCard : ''} ${draggedId === widget.id ? styles.dragging : ''}`}
+        draggable={isEditMode}
+        onDragStart={(e) => handleDragStart(e, widget.id)}
+        onDragEnter={(e) => handleDragEnter(e, widget.id)}
+        onDragEnd={handleDragEnd}
+        onDragOver={handleDragOver}
+        onDrop={(e) => handleDrop(e, widget.id)}
+      >
+        {isEditMode && (
+          <button className={styles.closeWidgetBtn} onClick={() => toggleWidget(widget.id)} title="위젯 숨기기">
+            ✕
+          </button>
+        )}
+        {content}
+      </div>
+    );
+  };
+
+  // [수정된 부분] 반환 구문 구조 위젯 시스템에 맞춰 수정 (CSS Grid 적용)
+  return (
+    <div className={styles.container}>
+      <div className={styles.headerRow}>
+        <div className={styles.header}>
+          <h2>안녕하세요, {user?.username}님!</h2>
+          <p style={{color: '#817d7d'}}>이번 달 구독 내역을 확인해 보세요.</p>
         </div>
+
+        <div className={styles.editControls}>
+          <div className={styles.hiddenWidgets}>
+            {widgets.filter(w => !w.visible).map(w => (
+              <button key={w.id} className={styles.restoreBtn} onClick={() => toggleWidget(w.id)}>
+                + {w.title}
+              </button>
+            ))}
+          </div>
+          <Button 
+            variant={isEditMode ? "contained" : "outlined"} 
+            color={isEditMode ? "primary" : "inherit"}
+            onClick={() => setIsEditMode(!isEditMode)}
+          >
+            {isEditMode ? "편집 완료" : "대시보드 편집"}
+          </Button>
+        </div>
+      </div>
+
+      <div className={`${styles.dashboardGrid} ${isEditMode ? styles.editing : ''}`}>
+        {widgets.map(renderWidget)}
       </div>
     </div>
   );
