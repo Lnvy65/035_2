@@ -9,17 +9,17 @@ const SignUpPage = () => {
   
   // 1. 초기 상태 키값을 서버/API 함수와 일치시킵니다.
   const [formData, setFormData] = useState({
-    username: '', // userId 대신 username
+    userId: '',
     password: '',
-    kname: '',    // nickname 대신 kname
+    userName: '',
     email: '',
   });
 
   const signupMutation = useMutation({
     mutationFn: insertuserApi,
     onSuccess: (data) => {
-      // 닉네임 대신 kname 사용
-      alert(`${formData.kname}님, 회원가입이 완료되었습니다!`);
+      // 닉네임 대신 userName 사용
+      alert(`${formData.userName}님, 회원가입이 완료되었습니다!`);
       navigate("/login");
     },
     onError: (error) => {
@@ -55,8 +55,8 @@ const SignUpPage = () => {
           <label>아이디</label>
           <input 
             type="text" 
-            name="username" // name을 username으로 수정
-            value={formData.username} 
+            name="userId"
+            value={formData.userId} 
             onChange={handleChange} 
             placeholder="아이디를 입력하세요" required 
           />
@@ -74,8 +74,8 @@ const SignUpPage = () => {
           <label>닉네임</label>
           <input 
             type="text" 
-            name="kname" // name을 kname으로 수정
-            value={formData.kname} 
+            name="userName"
+            value={formData.userName} 
             onChange={handleChange} 
             placeholder="닉네임을 입력하세요" required 
           />

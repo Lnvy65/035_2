@@ -139,7 +139,7 @@ app.post(
         ========================== */
         if (imgMyProfile) {
             await db.run(
-                'UPDATE users SET IMG_NM = ? WHERE username = ?',
+                'UPDATE users SET IMG_NM = ? WHERE user_nm = ?',
                 [imgMyProfile.filename, user]
             );
         }
@@ -565,20 +565,20 @@ app.post('/rest/user/adduser', async (req, res) => {
 app.post('/rest/signup/signup', async (req, res) => {
     //let accessToken = req.headers['authorization'];
 
-    const { username, password, kname, email } = req.body;
+    const { userId, password, userName, email } = req.body;
 
     try {
         //jwt.verify(accessToken, SECRET_KEY);
 
         // 기존 파일 정보 조회 후 삭제
-        const row = await db.get('select count(*) FROM users where user_nm = ?', [username]);
+        const row = await db.get('select count(*) FROM users where user_nm = ?', [userId]);
         if(row['count(*)'] > 0){
             return res.status(400).json({ message: "아이디 중복" });
         }
 
         const result = await db.run(
             'insert into users (ID, PASSWORD, USER_NM, EMAIL, ROLES) values(?, ?, ?, ?, "USER")',
-            [username, password, kname, email]
+            [userId, password, userName, email]
         );
 
         if (result.changes > 0) res.json({ message: "계정 생성 성공!" });
@@ -602,7 +602,7 @@ app.post('/rest/main/selectsum', async (req, res) => {
     try {
         jwt.verify(accessToken, SECRET_KEY);
 
-        // 1. LEFT JOIN의 ON 절에 userName 조건을 넣어야 합니다. 
+        // 1. LEFT JOIN의 ON 절에 userId 조건을 넣어야 합니다. 
         // 그래야 '리뷰가 없는 공지'도 결과에 포함됩니다.
         let query = `	select  round(sum(us.MONTHLY_PRICE * er.EXCHANGE_RATE)) as sum
                                ,count(*) as count
