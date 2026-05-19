@@ -55,14 +55,14 @@ export const deleteUserApi = async ({seq}) => {
   return response.data;
 };
 
-export const addUserApi = async ({id, username, password, kname, roles, email, use_yn}) => {
+export const addUserApi = async ({id, userId, password, userName, roles, email, use_yn}) => {
   const response = await api.post(
     "/rest/user/adduser",
     { 
       "id" : id,
-      "username" : username,
+      "userId" : userId,
       "password" : password,
-      "kname" : kname,
+      "userName" : userName,
       "roles" : roles,
       "email" : email,
       "use_yn" : use_yn

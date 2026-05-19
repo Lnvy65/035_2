@@ -13,8 +13,8 @@ const ManageUserPage = () => {
   const [inputText, setInputText] = useState("");
   const [searchText, setSearchText] = useState("");
   const [newUser, setNewUser] = useState({
-    username: "",
-    kname: "",
+    userId: "",
+    userName: "",
     password: "",
     roles: "USER",
     email: "",
@@ -142,9 +142,9 @@ const ManageUserPage = () => {
       queryClient.invalidateQueries({ queryKey: ["alluser"] });
       setOpenCreate(false);  // 사용자추가화면을 안보이게 처리
       setNewUser({
-        username: "",
+        userId: "",
         password: "",
-        kname: "",
+        userName: "",
         roles: "USER",
         email: "",
         use_yn: "Y",
@@ -237,8 +237,8 @@ const ManageUserPage = () => {
           processRowUpdate={(newRow, oldRow) => {
             modifyUserMutation.mutate({
               id: newRow.SEQ,
-              username: newRow.ID,
-              kname: newRow.USER_NM,
+              userId: newRow.ID,
+              userName: newRow.USER_NM,
               roles: newRow.ROLES,
               email: newRow.EMAIL,
               use_yn: newRow.USE_YN,
@@ -262,9 +262,9 @@ const ManageUserPage = () => {
             <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
               <TextField
                 label="아이디"
-                value={newUser.username}
+                value={newUser.userId}
                 onChange={(e) =>
-                  setNewUser({ ...newUser, username: e.target.value })
+                  setNewUser({ ...newUser, userId: e.target.value })
                 }
                 fullWidth
                 required
@@ -272,9 +272,9 @@ const ManageUserPage = () => {
 
               <TextField
                 label="이름"
-                value={newUser.kname}
+                value={newUser.userName}
                 onChange={(e) =>
-                  setNewUser({ ...newUser, kname: e.target.value })
+                  setNewUser({ ...newUser, userName: e.target.value })
                 }
                 fullWidth
                 required
