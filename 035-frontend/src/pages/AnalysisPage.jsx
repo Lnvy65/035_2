@@ -218,6 +218,21 @@ const AnalysisPage = () => {
     </Box>
   );
 
+  if (dataresult.length === 0) {
+    return (
+      <Box sx={{ maxWidth: 1200, margin: "0 auto", padding: "20px", textAlign: "center", mt: 8 }}>
+        <Card sx={{ p: 5, borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)", border: "1px dashed #ccc" }}>
+          <Typography variant="h5" fontWeight="bold" color="text.secondary" gutterBottom>
+            지출 분석 데이터가 없습니다.
+          </Typography>
+          <Typography variant="body1" color="text.secondary">
+            저장된 로그가 없습니다. 먼저 소비 내역을 등록해 주세요!
+          </Typography>
+        </Card>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ maxWidth: 1200, margin: "0 auto", padding: "20px" }}>
       <Box mb={4}>
