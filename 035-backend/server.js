@@ -316,48 +316,6 @@ app.post('/rest/auth/refresh', async (req, res) => {
 
 
 // -----------------------------------------------------------------------------------------------------------
-// /rest/user/oneuser
-// -----------------------------------------------------------------------------------------------------------
-app.post('/rest/user/oneuser', async (req, res) => {
-
-    // 1. Header에서 토큰 가져오기 (보통 'authorization' 필드를 사용합니다)
-    const accessToken = req.headers['authorization'];
-    if (!accessToken) {
-        return res.status(400).json({ message: "액세스토큰이 헤더에 없습니다." });
-    }
-
-    //console.log("/rest/user/oneuser 호출됐습니다 : ", accessToken);
-
-    // id값 가져오기
-    const { id } = req.body;
-    if (!id) {
-        return res.status(400).json({ message: "아이디를 입력해주세요." });
-    }
-
-    try {
-        // 엑세스 토큰 검증
-        const decoded = jwt.verify(accessToken, SECRET_KEY);   // 토큰이 유효하지 않으면 에러 발생, return문은 payuload 반환
-
-        // DB에서 유저 조회
-        const user = await db.get('SELECT * FROM USERS WHERE id = ?', [id]);
-        res.json(
-            {
-                user: user,
-                message: "사용자조회 성공!"
-            }
-        );
-
-    } catch (error) {
-        res.status(401).json({ 
-                stt: -1,
-                message: error.message
-        });
-    }
-});
-
-
-
-// -----------------------------------------------------------------------------------------------------------
 // /rest/user/alluser
 // -----------------------------------------------------------------------------------------------------------
 app.post('/rest/user/alluser', async (req, res) => {

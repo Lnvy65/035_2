@@ -10,18 +10,6 @@ export const allUserApi = async ({keyword}) => {
   return response.data.user;
 };
 
-export const oneUserApi = async ({id}) => {
-  const response = await api.post(
-    "/rest/user/oneuser",
-    { "id" : id },
-    {
-      withCredentials: true,
-    }
-  );
-
-  return response.data;
-};
-
 export const modifyUserApi = async ({id, userId, userName, roles, email, use_yn}) => {
   const response = await api.post(
     "/rest/user/modifyuser",
