@@ -139,7 +139,7 @@ app.post(
         ========================== */
         if (imgMyProfile) {
             await db.run(
-                'UPDATE users SET img_name = ? WHERE username = ?',
+                'UPDATE users SET IMG_NM = ? WHERE username = ?',
                 [imgMyProfile.filename, user]
             );
         }
@@ -1039,7 +1039,7 @@ app.post('/rest/event/delete', async (req, res) => {
         const result = await db.run('DELETE FROM TB_EVENT WHERE SEQ = ?', [seq]); 
         
         if (result.changes > 0) res.json({ message: "이벤트 삭제 성공" }); 
-        else res.status(404).json({ message: "삭제할 이벤트를 찾지 못했습니다." }); 
+        else res.status(404).json({ message: "삭제할 이벤트를 찾지 못했습니다." });
     } catch (error) { 
         res.status(401).json({ stt: -1, message: error.message }); 
     } 
