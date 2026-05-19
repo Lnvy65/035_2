@@ -422,7 +422,7 @@ app.post('/rest/user/modifyuser', async (req, res) => {
     console.log("/rest/user/modifyuser 호출됐습니다 : ", accessToken);
 
     // id값 가져오기
-    const { id, username, kname, roles, email, use_yn } = req.body;
+    const { id, userId, userName, roles, email, use_yn } = req.body;
 
     if (!id) {
         return res.status(400).json({ message: "아이디를 입력해주세요." });
@@ -435,7 +435,7 @@ app.post('/rest/user/modifyuser', async (req, res) => {
         // 1. DB 데이터 수정 실행
         const result = await db.run(
             'UPDATE users SET user_nm = ?, roles = ?, email = ?, use_yn = ?  WHERE id = ?',
-            [kname, roles, email, use_yn, username]
+            [userName, roles, email, use_yn, userId]
         );
 
         // 2. 결과 응답
