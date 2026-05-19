@@ -22,13 +22,13 @@ export const oneUserApi = async ({id}) => {
   return response.data;
 };
 
-export const modifyUserApi = async ({id, username, kname, roles, email, use_yn}) => {
+export const modifyUserApi = async ({id, userId, userName, roles, email, use_yn}) => {
   const response = await api.post(
     "/rest/user/modifyuser",
     { 
       "id" : id,
-      "username" : username,
-      "kname" : kname, 
+      "userId" : userId,
+      "userName" : userName,
       "roles" : roles, 
       "email" : email, 
       "use_yn" : use_yn
