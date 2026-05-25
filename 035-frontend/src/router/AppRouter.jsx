@@ -36,7 +36,7 @@ const AppRouter = () => {
       <Route
         path="/analysis"
         element={isAuthenticated ? <Layout><AnalysisPage /></Layout> : <Navigate to="/login" />}
-      />          
+      />
       <Route
         path="/manageUser"
         element={user?.roles === "ADMIN" ? <Layout><ManageUserPage /></Layout> : <Navigate to="/login" />}
