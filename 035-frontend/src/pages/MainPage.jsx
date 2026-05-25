@@ -19,11 +19,11 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 // 💡 [Refactor] Query Key를 계층화하여 관리를 쉽게 만듭니다.
 const QUERY_KEYS = {
   all: ["subscription"],
-  sum: (username) => ["subscription", "sum", username],
-  monthlySum: (username) => ["subscription", "monthlySum", username],
-  date: (username) => ["subscription", "date", username],
-  list: (username) => ["subscription", "list", username],
-  chart: (username) => ["subscription", "chart", username],
+  sum: (userId) => ["subscription", "sum", userId],
+  monthlySum: (userId) => ["subscription", "monthlySum", userId],
+  date: (userId) => ["subscription", "date", userId],
+  list: (userId) => ["subscription", "list", userId],
+  chart: (userId) => ["subscription", "chart", userId],
 };
 
 const MainPage = () => {
@@ -47,6 +47,9 @@ const MainPage = () => {
     queryKey: QUERY_KEYS.sum(userId),
     queryFn: () => selectsumApi({ userId }),
     enabled: !!userId,
+      refetchOnWindowFocus: false,
+      refetchOnMount: false,
+      staleTime: 0,
   });
   const totalSumResult = sumData?.result?.[0] || { sum: 0, count: 0 };
 
@@ -54,6 +57,9 @@ const MainPage = () => {
   queryKey: QUERY_KEYS.monthlySum(userId),
   queryFn: () => selectmonthlysumApi({ userId }),
   enabled: !!userId,
+  refetchOnWindowFocus: false,
+  refetchOnMount: false,
+  staleTime: 0,
   });
   const monthlySumResult = monthlySumResultsumData?.result?.[0] || { sum: 0, count: 0 };
 
@@ -61,6 +67,9 @@ const MainPage = () => {
     queryKey: QUERY_KEYS.date(userId),
     queryFn: () => selectdateApi({ userId }),
     enabled: !!userId,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 0,
   });
   const dateresult = dateData?.result?.[0] || { NEXT_BILLING_DT: 0, SERVICE_NM: 0 };
 
@@ -69,7 +78,10 @@ const MainPage = () => {
     queryKey: QUERY_KEYS.list(userId),
     queryFn: () => selectsublistApi({ userId }),
     // KRW 모드가 아닐 때만 호출 (!!userId는 로그인이 되어있을 때라는 기본 조건)
-    enabled: !!userId && !isKrwMode, 
+    enabled: !!userId && !isKrwMode,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 0,
   });
 
   // 2. 원화 환산 리스트 (원화 모드)
@@ -78,13 +90,19 @@ const MainPage = () => {
     queryKey: [...QUERY_KEYS.list(userId), "krw"], 
     queryFn: () => selectsubkrlistApi({ userId }),
     // KRW 모드일 때만 호출
-    enabled: !!userId && isKrwMode, 
+    enabled: !!userId && isKrwMode,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 0,
   });
 
   const { data: subchartData, isLoading: issubchartLoading } = useQuery({
     queryKey: QUERY_KEYS.chart(userId),
     queryFn: () => selectsubchartApi({ userId }),
     enabled: !!userId,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 0,
   });
   const chartResult = subchartData?.result || [];
 
@@ -235,7 +253,7 @@ const MainPage = () => {
                 open={openEdit} 
                 editData={editData}
                 onClose={handleCloseEdit} 
-                onSave={(data) => updateMutation.mutate({ ...data, userName })}
+                onSave={(data) => updateMutation.mutate({ ...data, userId })}
                 isLoading={updateMutation.isPending}
               />
             </div>
