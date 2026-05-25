@@ -177,7 +177,7 @@ const AnalysisPage = () => {
       align: "center",
       headerAlign: "center",
       width: 183,
-      valueFormatter: (value) => `${value.toLocaleString()}원`
+      valueFormatter: (value) => value != null ? `${value.toLocaleString()}원` : '0원'
     },
     { field: 'CATEGORY_CNT', headerName: '카테고리 합계', align: "center", headerAlign: "center", width: 183 },
   ];
@@ -250,7 +250,7 @@ const AnalysisPage = () => {
               1년간 총 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {avgResult.payforyear.toLocaleString()}원
+              {(avgResult?.payforyear ?? 0).toLocaleString()}원
             </Typography>
           </Card>
           <Card sx={{ p: 3, borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
@@ -258,7 +258,7 @@ const AnalysisPage = () => {
               월 평균 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {avgResult.avg.toLocaleString()}원
+              {(avgResult?.avg ?? 0).toLocaleString()}원
             </Typography>
           </Card>
       </Grid>

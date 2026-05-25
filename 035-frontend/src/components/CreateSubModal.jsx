@@ -32,7 +32,7 @@ const INITIAL_STATE = {
 
 const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscriptions = []}) => {
   const user = useAuthStore((state) => state.user);
-  const userName = user?.username;
+  const userId = user?.id;
 
   const [form, setForm] = useState(INITIAL_STATE);
 
@@ -60,13 +60,13 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
     onSave({ 
       ...saveData, 
       MONTHLY_PRICE: priceNum,
-      userName: user?.username
+      userId: userId
     });
     setForm(INITIAL_STATE);
     // onSave({ 
     //   ...form, 
     //   MONTHLY_PRICE: priceNum, 
-    //   userName: user?.username 
+    //   userId: userId
     // });
     // setForm(INITIAL_STATE);
   };
@@ -94,6 +94,9 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
   const { data: curNMData = [], isLoading: iscurNMLoading, refetch: refetchCurNM } = useQuery({
     queryKey: ["selectcurNM"],
     queryFn: () => selectcurnmApi({}),
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 0,
   });
 
    const currencies = Array.isArray(curNMData) ? curNMData : [];

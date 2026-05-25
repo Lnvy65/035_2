@@ -13,6 +13,9 @@ const EditSubModal = ({ open, editData, onClose, onSave, isLoading }) => {
   const { data: curNMData = [], isLoading: iscurNMLoading, refetch: refetchCurNM } = useQuery({
     queryKey: ["selectcurNM"],
     queryFn: () => selectcurnmApi({}),
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    staleTime: 0,
   });
 
   // editData가 변경될 때마다 formData를 업데이트하여 초기값 설정 (curNMData가 로드된 후 매핑)
