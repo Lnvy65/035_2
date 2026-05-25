@@ -28,10 +28,6 @@ const ProfilePage = () => {
     new: "",
     confirm: "",
   });
-  const [userInfo, setUserInfo] = useState({
-    email: "",
-    user_nm: "",
-  });
 
   /* --------------------------------------------------------------------------------
     사진 조회
@@ -92,7 +88,7 @@ const ProfilePage = () => {
     setPreviewImg(null);
     setIsImageDeleted(true); // 이미지 삭제 플래그 활성화
   };
-  
+
   const handleUserInfoChange = (e) => {
     const { name, value } = e.target;
     setUserInfo((prev) => ({ ...prev, [name]: value }));
