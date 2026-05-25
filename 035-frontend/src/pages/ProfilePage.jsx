@@ -16,6 +16,13 @@ const ProfilePage = () => {
   const [imgMyProfile, setImgMyProfile] = useState(null); // 상단 useState 추가
   const [previewImg, setPreviewImg] = useState(null);  // 상단 useState 추가
   const [isImageDeleted, setIsImageDeleted] = useState(false); // 이미지 삭제 여부
+  
+  // 아이디, 이메일 상태 관리
+  const [userInfo, setUserInfo] = useState({
+    userId: user?.username || "",
+    email: user?.email || "",
+  });
+
   const [password, setPassword] = useState({
     current: "",
     new: "",
@@ -85,6 +92,11 @@ const ProfilePage = () => {
     setPreviewImg(null);
     setIsImageDeleted(true); // 이미지 삭제 플래그 활성화
   };
+  
+  const handleUserInfoChange = (e) => {
+    const { name, value } = e.target;
+    setUserInfo((prev) => ({ ...prev, [name]: value }));
+  };
 
   const saveSettings = () => {
     if (password.new !== password.confirm) {
@@ -95,6 +107,9 @@ const ProfilePage = () => {
     // 수정된 API 파라미터 (주소 포함)
     updateProfileMutation.mutate({
       userId: userId,
+      user: user.username,
+      newUserId: userInfo.userId,
+      email: userInfo.email,
       password: password.new,
       email: userInfo.email,
       user_nm: userInfo.user_nm,
@@ -107,6 +122,8 @@ const ProfilePage = () => {
     mutationFn: updateProfileApi,
     onSuccess: (data) => {
       updateUser({
+        username: userInfo.userId,
+        email: userInfo.email,
       });
       setPassword({ new: "", confirm: "" });
       setUserInfo({ email: "", user_nm: "" });
@@ -246,6 +263,33 @@ const ProfilePage = () => {
             value={user.id}
             className={styles.input}
             disabled
+          />
+        </div>
+      </section>
+
+      {/* 기본 정보 수정 섹션 */}
+      <section className={styles.section}>
+        <h3 className={styles.sectionTitle}><User size={20} /> 기본 정보 수정</h3>
+        <div className={styles.inputGroup}>
+          <label className={styles.label}>아이디</label>
+          <input
+            type="text"
+            name="userId"
+            value=""
+            onChange={handleUserInfoChange}
+            className={styles.input}
+            placeholder={"기존 아이디: "+userInfo.userId}
+          />
+        </div>
+        <div className={styles.inputGroup}>
+          <label className={styles.label}>이메일</label>
+          <input
+            type="email"
+            name="email"
+            value={userInfo.email}
+            onChange={handleUserInfoChange}
+            className={styles.input}
+            placeholder="변경할 이메일 입력"
           />
         </div>
       </section>
