@@ -64,15 +64,18 @@ export const addUserApi = async ({id, userId, password, userName, roles, email, 
 };
 
 
-export const updateProfileApi = async ({user, password, imgMyProfile}) => {
+export const updateProfileApi = async ({userId, password, email, user_nm, imgMyProfile, isImageDeleted}) => {
   const formData = new FormData();
-  formData.append("user", user);
+  formData.append("userId", userId);
   formData.append("password", password);
+  formData.append("email", email);
+  formData.append("user_nm", user_nm);
+  formData.append("isImageDeleted", isImageDeleted);
 
   // 파일일 경우만 추가
   if (imgMyProfile) {
     formData.append("imgMyProfile", imgMyProfile);
-  }  
+  }
 
   const response = await api.post(
     "/rest/user/updateprofile",
@@ -85,5 +88,24 @@ export const updateProfileApi = async ({user, password, imgMyProfile}) => {
   return response.data;
 };
 
+export const selectUserDataApi = async ({userId}) => {  
+  
+  const response = await api.post(
+    "/rest/main/selectuserdata",
+    { "userId" : userId },
+    { withCredentials: true }
+  );
 
+  return response.data;
+};
 
+export const selectpfpdataApi = async ({userId}) => {  
+  
+  const response = await api.post(
+    "/rest/user/selectpfpdata",
+    { "userId" : userId },
+    { withCredentials: true }
+  );
+
+  return response.data;
+};

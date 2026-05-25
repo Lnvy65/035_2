@@ -94,6 +94,37 @@ const deletePhysicalFile = (fileName) => {
 
 
 // -----------------------------------------------------------------------------------------------------------
+// /rest/user/selectpfpdata
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/user/selectpfpdata', async (req, res) => {
+    let accessToken = req.headers['authorization'];
+    if (!accessToken) return res.status(401).json({ message: "액세스토큰이 없습니다." });
+
+    const { userId } = req.body; 
+
+    try {
+        jwt.verify(accessToken, SECRET_KEY);
+
+        let query = `select IMG_NM from users where ID = ?`;
+        
+        let params = [userId]; 
+
+        const userpfp = await db.all(query, params);
+
+        const formattedUserPfp = userpfp.map(pfpdata => ({
+            ...pfpdata,
+            picture: pfpdata.IMG_NM ? `http://localhost:5000/profile/${pfpdata.IMG_NM}` : null
+        }));
+
+        res.json({ userpfp: formattedUserPfp });
+
+    } catch (error) {
+        res.status(401).json({ message: "인증 실패: " + error.message });
+    }
+});
+
+
+// -----------------------------------------------------------------------------------------------------------
 // /rest/user/updateprofile
 // -----------------------------------------------------------------------------------------------------------
 
@@ -111,12 +142,32 @@ app.post(
     console.log("/rest/user/updateprofile 호출:", accessToken);
 
     // form-data 텍스트 필드
-    const { user, password } = req.body;
+    const { userId, password, email, user_nm, isImageDeleted } = req.body;
 
     // 업로드된 파일
     const imgMyProfile = req.file;
 
-    if (!user) {
+    const oldData = await db.get('select IMG_NM from users where ID = ?', [userId]);
+    const oldFileName = oldData ? oldData.IMG_NM : null;
+
+    let finalFileName = undefined;
+
+    // 새로운 파일이 업로드된 경우에만 기존 파일 삭제
+    if(imgMyProfile){
+        finalFileName = imgMyProfile.filename;
+        if (oldFileName) deletePhysicalFile(oldFileName);
+    }
+    else if (isImageDeleted === true || isImageDeleted === 'true') {
+        finalFileName = "";
+        if (oldFileName) deletePhysicalFile(oldFileName);
+
+        await db.run(
+            'UPDATE users SET IMG_NM = NULL WHERE ID = ?',
+            [userId]
+        );
+    }
+
+    if (!userId) {
         return res.status(400).json({ message: "아이디를 입력해주세요." });
     }
 
@@ -129,8 +180,22 @@ app.post(
         ========================== */
         if (password) {
             await db.run(
-                'UPDATE users SET password = ? WHERE user_nm = ?',
-                [password, user]
+                'UPDATE users SET password = ? WHERE ID = ?',
+                [password, userId]
+            );
+        }
+
+        if (email) {
+            await db.run(
+                'UPDATE users SET email = ? WHERE ID = ?',
+                [email, userId]
+            );
+        }
+
+        if (user_nm) {
+            await db.run(
+                'UPDATE users SET USER_NM = ? WHERE ID = ?',
+                [user_nm, userId]
             );
         }
 
@@ -139,13 +204,15 @@ app.post(
         ========================== */
         if (imgMyProfile) {
             await db.run(
-                'UPDATE users SET IMG_NM = ? WHERE user_nm = ?',
-                [imgMyProfile.filename, user]
+                'UPDATE users SET IMG_NM = ? WHERE ID = ?',
+                [imgMyProfile.filename, userId]
             );
         }
 
         res.json({
-            user,
+            userId,
+            email,
+            user_nm,
             imgMyProfile: imgMyProfile?.filename,
             message: "개인설정저장 성공!"
         });
@@ -190,14 +257,14 @@ app.post('/rest/auth/login', async (req, res) => {
         if (user) {
             // 1. JWT 생성 (유효기간 2시간)
             const accessToken = jwt.sign(
-                { id: user.ID, username: user.USER_NM, roles: user.ROLES },   // payload에 필요한 정보만 전달
+                { id: user.ID, username: user.USER_NM, roles: user.ROLES, email : user.EMAIL },   // payload에 필요한 정보만 전달
                 SECRET_KEY,
                 { expiresIn: '2h' }
             );
 
             // 1. JWT 생성 (유효기간 24시간)
             const refreshToken = jwt.sign(
-                { id: user.ID, username: user.USER_NM, roles: user.ROLES },   // payload에 필요한 정보만 전달
+                { id: user.ID, username: user.USER_NM, roles: user.ROLES, email : user.EMAIL },   // payload에 필요한 정보만 전달
                 SECRET_KEY,
                 { expiresIn: '24h' }
             );            
@@ -291,7 +358,7 @@ app.post('/rest/auth/refresh', async (req, res) => {
         if (user) {
             // 1. JWT 생성 (유효기간 2시간)
             const accessToken = jwt.sign(
-                { id: user.ID, username: user.USER_NM, roles: user.ROLES },
+                { id: user.ID, username: user.USER_NM, roles: user.ROLES, email : user.EMAIL },
                 SECRET_KEY,
                 { expiresIn: '2h' }
             );
@@ -299,7 +366,7 @@ app.post('/rest/auth/refresh', async (req, res) => {
             res.json(
                 {
                     accessToken : accessToken,
-                    user: { id: user.ID, username: user.USER_NM, roles: user.ROLES },
+                    user: { id: user.ID, username: user.USER_NM, roles: user.ROLES, email : user.EMAIL },
                     message: "리플레쉬 성공!"
                 }
             );
@@ -1168,6 +1235,32 @@ app.post('/rest/main/selectCategoryDetail', async (req, res) => {
         
         // userId는 JOIN 조건으로 들어가므로 가장 먼저 push
         let params = [userId, selectedDate, category];
+
+        const result = await db.all(query, params);
+
+        res.json({ result: result });
+
+    } catch (error) {
+        res.status(401).json({ message: "인증 실패: " + error.message });
+    }
+});
+
+
+// -----------------------------------------------------------------------------------------------------------
+// /rest/main/selectuserdata
+// -----------------------------------------------------------------------------------------------------------
+app.post('/rest/main/selectuserdata', async (req, res) => {
+    let accessToken = req.headers['authorization'];
+    if (!accessToken) return res.status(401).json({ message: "액세스토큰이 없습니다." });
+
+    const { userId } = req.body;
+
+    try {
+        jwt.verify(accessToken, SECRET_KEY);
+
+        let query = `select id, email from users where id = ?`;
+
+        let params = [userId];
 
         const result = await db.all(query, params);
 
