@@ -11,15 +11,10 @@ const EventPage = () => {
   const queryClient = useQueryClient();
   const [openCreate, setOpenCreate] = useState(false);
   
-  // [수정된 부분] image 상태 유지
   const [newEvent, setNewEvent] = useState({ title: "", content: "", image: null });
   const [previewImg, setPreviewImg] = useState(null);
-  // [수정된 부분] 끝
-
-  // [수정된 부분] 이벤트 상세 팝업 관리를 위한 상태 추가
   const [openDetail, setOpenDetail] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  // [수정된 부분] 끝
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["eventList"],
@@ -31,11 +26,9 @@ const EventPage = () => {
     mutationFn: addEventApi,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["eventList"] });
-      // [수정된 부분] 등록 성공 시 상태 초기화 유지
       setOpenCreate(false);
       setNewEvent({ title: "", content: "", image: null });
       setPreviewImg(null);
-      // [수정된 부분] 끝
       alert("이벤트가 등록되었습니다.");
     },
     onError: () => {
@@ -59,7 +52,6 @@ const EventPage = () => {
     }
   };
 
-  // [수정된 부분] 이미지 변경 핸들러 및 팝업 닫기 핸들러 유지
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -77,9 +69,7 @@ const EventPage = () => {
     setNewEvent({ title: "", content: "", image: null });
     setPreviewImg(null);
   };
-  // [수정된 부분] 끝
 
-  // [수정된 부분] 이벤트 상세 팝업 열기/닫기 핸들러 추가
   const handleOpenDetail = (event) => {
     setSelectedEvent(event);
     setOpenDetail(true);
@@ -89,14 +79,15 @@ const EventPage = () => {
     setOpenDetail(false);
     setSelectedEvent(null);
   };
-  // [수정된 부분] 끝
 
   if (isLoading) return <div>로딩 중...</div>;
 
   return (
     <Box sx={{ px: 2, pt: 0 }}>
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
-        <h2 className={styles.title} style={{ margin: 0 }}>이벤트 관리</h2>
+        <h2 className={styles.title} style={{ margin: 0 }}>
+          {user?.roles === "ADMIN" ? "이벤트 관리" : "이벤트"}
+        </h2>
         {user?.roles === "ADMIN" && (
           <Button variant="outlined" size="small" onClick={() => setOpenCreate(true)}>
             이벤트 추가
@@ -109,11 +100,10 @@ const EventPage = () => {
           <Typography variant="body1" color="text.secondary">등록된 이벤트가 없습니다.</Typography>
         ) : (
           events.map((event) => (
-            /* [수정된 부분] Card에 onClick 이벤트와 마우스 오버 시 효과(cursor, hover) 추가 */
             <Card 
               key={event.SEQ} 
               variant="outlined" 
-              sx={{ position: "relative", cursor: "pointer", transition: "background-color 0.2s", "&:hover": { backgroundColor: "#f9f9f9" } }}
+              sx={{ position: "relative", cursor: "pointer", transition: "background-color 0.2s", "&:hover": { backgroundColor: "action.hover" } }}
               onClick={() => handleOpenDetail(event)}
             >
             
@@ -122,7 +112,6 @@ const EventPage = () => {
                   {event.TITLE}
                 </Typography>
                 
-                {/* [수정된 부분] 등록된 이미지가 있을 경우 화면에 표시 유지 */}
                 {event.IMG_NAME && (
                   <Box sx={{ my: 2 }}>
                     <img
@@ -132,7 +121,7 @@ const EventPage = () => {
                     />
                   </Box>
                 )}
-                {/* [수정된 부분] 끝 */}
+
 
                 <Typography variant="body2" color="text.secondary" sx={{ whiteSpace: "pre-wrap", mb: 2 }}>
                   {event.CONTENT}
@@ -144,7 +133,6 @@ const EventPage = () => {
               {user?.roles === "ADMIN" && (
                 <IconButton
                   color="error"
-                  /* [수정된 부분] 삭제 버튼 클릭 시 Card의 onClick(상세보기)이 실행되지 않도록 이벤트 전파 중단(e.stopPropagation()) 추가 */
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDelete(event.SEQ);
@@ -160,13 +148,10 @@ const EventPage = () => {
         )}
       </Box>
 
-      {/* [수정된 부분] onClose 속성에 handleCloseCreate 적용 유지 */}
       <Dialog open={openCreate} onClose={handleCloseCreate} maxWidth="sm" fullWidth>
         <DialogTitle>새 이벤트 등록</DialogTitle>
         <DialogContent dividers>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2, mt: 1 }}>
-            
-            {/* [수정된 부분] 이미지 업로드 버튼 및 미리보기 영역 추가 유지 */}
             <Button variant="outlined" component="label" sx={{ width: "fit-content" }}>
               이미지 첨부
               <input type="file" hidden accept="image/*" onChange={handleImageChange} />
@@ -195,20 +180,18 @@ const EventPage = () => {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          {/* [수정된 부분] 취소 버튼에 handleCloseCreate 적용 유지 */}
           <Button onClick={handleCloseCreate} color="inherit">취소</Button>
           <Button
             variant="contained"
+            color="primary"
             onClick={() => addEventMutation.mutate(newEvent)}
             disabled={!newEvent.title || !newEvent.content || addEventMutation.isPending}
-            sx={{ backgroundColor: "#000", "&:hover": { backgroundColor: "#333" } }}
           >
             등록
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* [수정된 부분] 이벤트 상세 보기 팝업 UI 추가 */}
       <Dialog open={openDetail} onClose={handleCloseDetail} maxWidth="md" fullWidth>
         <DialogTitle sx={{ fontWeight: "bold", fontSize: "1.5rem" }}>
           {selectedEvent?.TITLE}
@@ -236,7 +219,7 @@ const EventPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
-      {/* [수정된 부분] 끝 */}
+
 
     </Box>
   );

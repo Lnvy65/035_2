@@ -1,72 +1,133 @@
+/* [수정된 부분] 다크모드 시 글씨 무력화 방지를 위해 LoginPage 레이아웃 패턴 완벽 결합 및 강제 색상 고정 지정 */
 .container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh; 
+  width: 100vw;
+  overflow: hidden; 
+  perspective: 1000px;
+  box-sizing: border-box;
+}
+
+/* [추가된 부분] 은은한 하늘색 움직이는 그라데이션 레이어 추가 */
+.background {
+  position: absolute;
+  top: -10%;
+  left: -10%;
+  width: 120%; 
+  height: 120%;
+  background: linear-gradient(-45deg, #e0f2fe, #bae6fd, #7dd3fc, #38bdf8); 
+  background-size: 400% 400%; 
+  animation: gradientBG 30s ease infinite; 
+  transform: translate(var(--mouse-x, 0px), var(--mouse-y, 0px));
+  transition: transform 0.2s ease-out; 
+  z-index: -1;
+}
+
+@keyframes gradientBG {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* [수정된 부분] 글래스모피즘 전용 카드 스타일 구조 변경 및 3D 회전 제어 */
+.card {
   padding: 40px;
-  max-width: 400px;
-  margin: 0 auto;
-  font-family: 'Pretendard', sans-serif;
-  color: #333;
+  border-radius: 16px; 
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255, 255, 255, 0.4) !important; 
+  backdrop-filter: blur(16px); 
+  -webkit-backdrop-filter: blur(16px); 
+  border: 1px solid rgba(255, 255, 255, 0.6) !important; 
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1) !important; 
+  transform: rotateX(var(--rotate-x, 0deg)) rotateY(var(--rotate-y, 0deg));
+  transition: transform 0.15s ease-out;
+  box-sizing: border-box;
 }
 
 .backButton {
   background: none;
   border: none;
   cursor: pointer;
-  color: #666;
-  margin-bottom: 20px;
+  color: #475569 !important; /* 가독성 고정 */
+  margin-bottom: 15px;
   font-size: 14px;
+  padding: 0;
+  display: flex;
+  font-weight: 500;
 }
 
 .title {
-  margin-bottom: 30px;
+  margin-top: 0;
+  margin-bottom: 25px;
   font-size: 24px;
   font-weight: bold;
+  color: #0284c7 !important; /* 다크모드 무관하게 상시 고정 */
 }
 
 .form {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .inputGroup {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
+  text-align: left;
 }
 
 .inputGroup label {
   font-size: 14px;
   font-weight: 600;
+  color: #334155 !important; /* 상시 가독성 유지색 */
 }
 
 .inputGroup input {
+  width: 100%;
   padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-size: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.6); 
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7) !important; 
+  color: #1e293b !important; 
+  font-size: 15px;
+  box-sizing: border-box;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.inputGroup input::placeholder {
+  color: #94a3b8;
 }
 
 .inputGroup input:focus {
-  outline: none;
-  border-color: #007bff;
+  border-color: #38bdf8; 
+  background: rgba(255, 255, 255, 0.95) !important; 
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); 
 }
 
 .submitButton {
   padding: 14px;
-  background-color: #007bff;
-  color: white;
+  background-color: #3b82f6 !important;
+  color: white !important;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 16px;
   font-weight: bold;
   margin-top: 10px;
-  transition: background-color 0.2s;
+  transition: all 0.3s;
 }
 
 .submitButton:hover {
-  background-color: #0069d9;
+  background-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
 }
 
 .submitButton:active {
-  background-color: #0056b3; /* 클릭했을 때 피드백을 위해 조금 더 어둡게 */
-}
+  background-color: #1d4ed8 !important;
+} 

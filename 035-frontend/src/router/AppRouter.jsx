@@ -16,6 +16,7 @@ const AppRouter = () => {
     <Routes>
       <Route
         path="/login"
+        /* [수정된 부분] 정상적인 로그인 렌더링 확인 (MainPage가 아닌 LoginPage가 렌더링 되어야 합니다) */
         element={isAuthenticated ? <Navigate to="/" /> : <LoginPage />}
       />
       <Route
@@ -26,6 +27,7 @@ const AppRouter = () => {
       {/* 인증이 필요한 모든 페이지는 Layout으로 감쌉니다 */}
       <Route
         path="/"
+        /* [수정된 부분] 메인 페이지는 Layout으로 감싸져야 사이드바가 정상적으로 나타납니다 */
         element={isAuthenticated ? <Layout><MainPage /></Layout> : <Navigate to="/login" />}
       />
       <Route
@@ -41,7 +43,6 @@ const AppRouter = () => {
         path="/manageUser"
         element={user?.roles === "ADMIN" ? <Layout><ManageUserPage /></Layout> : <Navigate to="/login" />}
       />        
-      {/* 수정된 부분: 이벤트 페이지 라우트 추가 */}
       <Route
         path="/event"
         element={isAuthenticated ? <Layout><EventPage /></Layout> : <Navigate to="/login" />}

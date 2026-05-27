@@ -58,12 +58,12 @@ const ProfilePage = () => {
   const dataresult = userData?.result?.[0] ?? {};
 
 
-  // 파일 선택 핸들러
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // 이미지 파일만 허용 (선택)
+
     if (!file.type.startsWith("image/")) {
       alert("이미지 파일만 업로드 가능합니다.");
       return;
@@ -83,7 +83,7 @@ const ProfilePage = () => {
   const handleImageDelete = () => {
     setImgMyProfile(null);
     setPreviewImg(null);
-    setIsImageDeleted(true); // 이미지 삭제 플래그 활성화
+    setIsImageDeleted(true); 
   };
 
   const saveSettings = () => {
@@ -92,7 +92,6 @@ const ProfilePage = () => {
       return;
     }
 
-    // 수정된 API 파라미터 (주소 포함)
     updateProfileMutation.mutate({
       userId: userId,
       password: password.new,
@@ -121,7 +120,6 @@ const ProfilePage = () => {
     },
   });
 
-  // 버튼 활성화/비활성화 조건 정의
   const hasChanges =
     userInfo.email.trim() !== "" ||
     userInfo.user_nm.trim() !== "" ||
@@ -212,7 +210,6 @@ const ProfilePage = () => {
             * JPG, PNG 이미지 업로드 가능
           </p>
 
-          {/* ★ 수정: 이미지 삭제 버튼 고도화 */}
             <button 
               onClick={handleImageDelete}
               disabled={isDeleteBtnDisabled}
@@ -274,6 +271,13 @@ const ProfilePage = () => {
             className={styles.input}
             placeholder="비밀번호 확인"
           />
+          {/* 비밀번호 불일치 시 안내 라벨 추가 */}
+          {isPasswordInvalid && (
+            <span style={{ color: "#ff4d4f", fontSize: "12px", marginTop: "5px" }}>
+              비밀번호가 일치하지 않습니다.
+            </span>
+          )}
+
         </div>
       </section>
 
@@ -315,7 +319,6 @@ const ProfilePage = () => {
         className={styles.saveButton}
         disabled={isButtonDisabled}
         style={{
-          // 비활성화 상태일 때 시각적으로 보여주기 위한 예시 스타일 (선택사항)
           backgroundColor: isButtonDisabled ? "#ccc" : "#007bff",
           cursor: isButtonDisabled ? "not-allowed" : "pointer"
         }}
