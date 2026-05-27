@@ -25,7 +25,8 @@ npm start (백엔드에서)
 </details>
 <details>
     <summary>류준상</summary>
-    **옮길거 : 서버 js, api , page, appRouter, sidebar.jsx**
+    어드민이 아닌 계정으로 들어갔을 때 이벤트탭 이벤트 관리가 아닌 이벤트로 보이게 하는거 바꾸기
+    이벤트 탭 UI 바꾸기 다크모드 고려해서
        
 </details>
 <details>
