@@ -84,11 +84,27 @@ def send_gmail():
                 print("🎉 오늘 새로 발송할 구독 내역이 없습니다.")
                 return
 
+            # 오늘 날짜 구하기 (년-월-일)
+            today = datetime.now().date()
+
             # ===================================================
-            # [1단계] 이메일별로 구독 내역 묶기 (완전 분리)
+            # [1단계] 이메일별로 구독 내역 묶기 (오늘 날짜 데이터만 필터링)
             # ===================================================
             grouped_data = {}
             for row in rows:
+                # 💡 DB의 CREATE_DT 값을 파이썬 date 객체로 변환/추출
+                create_dt = row["CREATE_DT"]
+                
+                # 만약 DATETIME 타입이라 시/분/초가 포함되어 있다면 date()로 날짜만 추출
+                if isinstance(create_dt, datetime):
+                    create_date = create_dt.date()
+                else:
+                    create_date = create_dt  # 이미 date 타입인 경우
+
+                # ⭐ [핵심 조건] CREATE_DT의 날짜가 오늘 날짜와 일치하지 않으면 딕셔너리에 추가하지 않고 건너뜀
+                if create_date != today:
+                    continue
+
                 email = row["EMAIL"]
                 if email not in grouped_data:
                     grouped_data[email] = {
@@ -98,6 +114,11 @@ def send_gmail():
                     }
                 grouped_data[email]["SUB_LIST"].append(row)
                 grouped_data[email]["LOG_SEQS"].append(row["SEQ"])
+
+            # 만약 오늘 날짜와 일치하는 데이터가 하나도 없어서 묶인 데이터가 비어있다면 종료
+            if not grouped_data:
+                print("📅 조회된 미발송 내역 중 오늘 날짜(CREATE_DT)와 일치하는 항목이 없습니다.")
+                return
 
             # ===================================================
             # [2단계] 묶인 상자를 열어 '이메일당 딱 한 번만' 발송
@@ -111,17 +132,13 @@ def send_gmail():
                 sub_details_text = ""
                 for sub in sub_list:
                     price_float = float(sub['PRICE'])
-                    # 💡 값의 정수형과 실수형이 같다는 것은 뒤가 .00으로 끝난다는 뜻!
                     if price_float == int(price_float):
-                        # 뒤가 .00으로 끝나면 소수점을 떼고 천 단위 쉼표만 찍음
                         price_formatted = f"{int(price_float):,}"
                     else:
-                        # 소수점 아래 숫자가 살아있다면(예: 12.99) 소수점 둘째 자리까지 유지
                         price_formatted = f"{price_float:,.2f}"
                         
                     sub_details_text += f"- {sub['SERVICE_NM']}: {price_formatted} {sub['CURRENCY']}\n"
                     
-                # ⚠️ 이메일 본문 양식은 반드시 왼쪽 벽에 바짝 붙여야 줄맞춤이 깨지지 않습니다.
                 body = f"""안녕하세요, {user_name}님!
 오늘 결제 예정인 구독 서비스 내역을 안내해 드립니다.
 
@@ -129,7 +146,6 @@ def send_gmail():
 {sub_details_text}
 항상 저희 서비스를 이용해 주셔서 감사합니다."""
                 
-                # 이메일 메시지 객체 생성 (매 이메일마다 새로 선언해야 안전함)
                 msg = MIMEMultipart()
                 msg['From'] = SENDER_EMAIL
                 msg['To'] = email
@@ -143,8 +159,6 @@ def send_gmail():
                         server.sendmail(SENDER_EMAIL, email, msg.as_string())
                     print(f"✨ {email}님에게 이메일 전송 성공!")
                     
-                    # 💡 [보너스] 메일 발송에 성공했으니, 해당 데이터들의 EMAIL_YN을 'Y'로 업데이트하여 중복 발송 차단!
-                    # IN 절을 사용해 한 번에 묶어서 업데이트합니다. (예: WHERE SEQ IN (1, 2, 3))
                     format_strings = ','.join(['%s'] * len(log_seqs))
                     update_sql = f"UPDATE tb_user_log SET email_yn = 'Y' WHERE seq IN ({format_strings})"
                     cursor.execute(update_sql, tuple(log_seqs))
@@ -158,7 +172,6 @@ def send_gmail():
         print(f"❌ 데이터베이스 또는 커넥션 에러 발생: {e}")
 
     finally:
-        # 6. 연결 닫기 (필수)
         if 'conn' in locals() and conn.open:
             conn.close()
             print("🔒 DB 연결 종료.")

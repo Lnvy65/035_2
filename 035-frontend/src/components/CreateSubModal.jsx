@@ -66,25 +66,32 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
   // 입력 핸들러 공통화
   const handleChange = (field) => (e) => {
     let value = e.target.value;
-    
+
     if (field === 'MONTHLY_PRICE') {
-      // ⭐ 1. 숫자와 마침표(.)를 제외한 모든 문자 제거
-      let cleaned = value.replace(/[^0-9.]/g, "");
-      
-      // ⭐ 2. 마침표가 여러 개 입력되는 것을 방지 (첫 번째 마침표만 유효)
+      // 1. 기존 콤마 제거
+      const rawValue = value.replace(/,/g, "");
+
+      // 2. 숫자와 마침표(.)만 남김
+      let cleaned = rawValue.replace(/[^0-9.]/g, "");
+
+      // 3. 마침표 중복 방지
       const parts = cleaned.split(".");
       if (parts.length > 2) {
         cleaned = parts[0] + "." + parts.slice(1).join("");
       }
+
+      // 4. 천 단위 콤마 추가 (정수 부분만 포맷팅)
+      const integerPart = cleaned.split(".")[0];
+      const decimalPart = cleaned.includes(".") ? "." + cleaned.split(".")[1] : "";
       
-      value = cleaned;
+      value = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ",") + decimalPart;
     } 
     else if (field === 'SHARED_USERS') {
       value = Math.max(1, Number(value));
     }
+    
     setForm(prev => ({ ...prev, [field]: value }));
   };
-
   const getCalculatedPrice = () => {
     const price = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
     const users = Number(form.SHARED_USERS) || 1;
@@ -108,15 +115,21 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
       <DialogContent dividers>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}>
           <TextField
-            select label="서비스 빠른 선택"
+            select 
+            label="서비스 빠른 선택"
+            // 기본 프리셋 값과 비교할 때 상태에 콤마가 있으므로, 콤마를 제거하고 비교해야 매칭됩니다.
             value={PRESET_SERVICES.some(s => s.name === form.SERVICE_NM) ? form.SERVICE_NM : ''}
             onChange={(e) => {
               const selected = PRESET_SERVICES.find(s => s.name === e.target.value);
               if (selected && selected.name !== "직접 입력") {
+                
+                // ⭐ 숫자를 천 단위 콤마 문자열로 변환 (예: 14900 -> "14,900")
+                const formattedPrice = selected.price ? Number(selected.price).toLocaleString() : "";
+
                 setForm({
                   ...form,
                   SERVICE_NM: selected.name,
-                  MONTHLY_PRICE: selected.price.toString(), // 문자열로 동기화
+                  MONTHLY_PRICE: formattedPrice, // 콤마가 들어간 문자열로 동기화!
                   CATEGORY: selected.category
                 });
               }
@@ -133,7 +146,6 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             fullWidth 
             value={form.MONTHLY_PRICE} 
             onChange={handleChange('MONTHLY_PRICE')}
-            placeholder="0.00"
           />
           
           <TextField
@@ -200,7 +212,7 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
         <Button 
           variant="contained" 
           onClick={handleSave}
-          disabled={!form.SERVICE_NM || !form.MONTHLY_PRICE || isLoading}
+          disabled={!form.SERVICE_NM || !form.MONTHLY_PRICE || !form.CUR_NM || !form.SHARED_USERS || !form.ANCHOR_DAY || !form.BILLING_CYCLE || !form.CATEGORY || isLoading}
           sx={{ bgcolor: '#3b82f6' }}
         >
           저장하기
