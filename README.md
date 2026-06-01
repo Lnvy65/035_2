@@ -12,6 +12,9 @@ npm start (백엔드에서)
      
     alert SweetAlert2로 바꾸기  
     우측 하단 알림 관리자일시 알림글 추가 가능한 버튼? 만들기  
+
+    user_log테이블 email_yn 컬럼 추가  
+    user_log테이블 use_yn 컬럼 추가  
       
     설정  
     이메일 수정 추가  
@@ -21,8 +24,9 @@ npm start (백엔드에서)
     날짜 캘린더로 바꾸기  
 </details>
 <details>
-    <summary>류준상</summary>
-    **옮길거 : 서버 js, api , page, appRouter, sidebar.jsx**
+    <summary>류준상</summary>  
+
+    비밀번호 고칠 때 비활성화 말고도 추가로 에러 라벨 띄우기
        
 </details>
 <details>
