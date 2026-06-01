@@ -21,7 +21,7 @@ export const useSubColumns = (handleDelete) => {
       width: 100, 
       headerAlign: "center", 
       align: "center",
-      valueFormatter: (value) => value ? `${value.toLocaleString()}` : ""
+      valueFormatter: (value) => value ? `${Number(value).toLocaleString()}` : ""
     },
     { field: "CUR_NM", headerName: "통화", width: 80, headerAlign: "center", align: "center" },
     { field: "NEXT_BILLING_DT", headerName: "결제 예정일", width: 100, editable: false, headerAlign: "center", align: "center" },

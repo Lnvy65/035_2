@@ -31,7 +31,6 @@ const AppRouter = () => {
       <Route
         path="/profile"
         element={isAuthenticated ? <Layout><ProfilePage /></Layout> : <Navigate to="/login" />}
-        
       />
       <Route
         path="/analysis"

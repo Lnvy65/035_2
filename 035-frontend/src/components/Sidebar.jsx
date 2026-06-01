@@ -3,7 +3,7 @@ import useAuthStore from "../store/authStore";
 import useSidebarStore from "../store/sidebarStore";
 import styles from "../styles/Sidebar.module.css";
 import useThemeStore from "../store/themeStore";
-import { Home, Users, Settings, Coffee, Menu, LogOut, Moon, Sun, ChartColumnIncreasing, Gift } from "lucide-react"; // 수정됨: Gift 아이콘 임포트 추가
+import { Home, Users, Settings, Coffee, Menu, LogOut, Moon, Sun, ChartColumnIncreasing, Gift } from "lucide-react"; 
 import { useLogout } from "../hooks/useLogout"; // 로그아웃 훅이 있다고 가정
 import { selectpfpdataApi } from "../api/userApi";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -28,7 +28,7 @@ const Sidebar = () => {
       staleTime: 0,
     }
   );
-  const profileImgUrl = pfpData?.userpfp?.[0]?.picture;
+  const profileImgUrl = pfpData?.userpfp?.picture;
 
   return (
     <aside className={`${styles.sidebar} ${isOpen ? styles.open : styles.collapsed}`}>
@@ -56,14 +56,12 @@ const Sidebar = () => {
           </NavLink>
         </li>
 
-        {/* 수정됨: 이벤트 페이지로 이동하는 메뉴 항목 추가 시작 */}
         <li className={styles.menuItem}>
           <NavLink to="/event" className={({ isActive }) => isActive ? styles.active : ""}>
             <Gift size={22} />
             <span className={styles.menuText}>이벤트</span>
           </NavLink>
         </li>
-        {/* 수정됨: 이벤트 페이지로 이동하는 메뉴 항목 추가 끝 */}
 
         {/* 2. 설정(프로필) 메뉴 아이템 변경 부분 */}
         <li className={styles.menuItem}>
@@ -74,16 +72,15 @@ const Sidebar = () => {
                 src={profileImgUrl}
                 alt="프로필 이미지"
                 style={{
-                  width: "33px", // 다른 아이콘들과 크기를 맞추기 위해 22px로 조절
-                  height: "33px",
+                  width: "26px", 
+                  height: "26px",
                   borderRadius: "50%",
-                  objectFit: "cover",
-                  marginRight: "8px"
+                  objectFit: "cover"
                 }}
               />
             ) : (
-              // 이미지 주소가 없을 때 기본 아이콘 노출 (여기서 Settings 대신 User를 써도 좋습니다)
-              <Settings size={22} style={{ marginRight: "8px" }} />
+
+              <Settings size={22} />
             )}
             <span className={styles.menuText}>설정</span>
           </NavLink>
@@ -99,7 +96,7 @@ const Sidebar = () => {
         )}
       </ul>
       
-      {/* 하단 사용자 정보 및 로그아웃 */}
+
       <div className={styles.bottomArea}>
 
         <button onClick={toggleDarkMode} className={styles.themeToggleBtn}>

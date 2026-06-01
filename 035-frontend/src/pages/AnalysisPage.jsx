@@ -79,7 +79,7 @@ const AnalysisPage = () => {
   /* --------------------------------------------------------------------------------
    평균 데이터 가져오기
   -------------------------------------------------------------------------------- */
-  const { data: avgData = [], isLoading: isAvgLoading, refetch: refetchAvg, isFetching: isAvgFetching, isError: isAvgError } = useQuery(
+  const { data: avgData = {}, isLoading: isAvgLoading, refetch: refetchAvg, isFetching: isAvgFetching, isError: isAvgError } = useQuery(
     {
       queryKey: ["selectavg", userId],
       queryFn: () => selectavgApi({ userId }),
@@ -87,7 +87,7 @@ const AnalysisPage = () => {
       refetchOnWindowFocus: false,
     }
   );
-  const avgResult = avgData?.result?.[0] || [];
+  const avgResult = avgData?.result || {};
 
   /* --------------------------------------------------------------------------------
    카테고리별 개수 데이터 가져오기
@@ -177,7 +177,7 @@ const AnalysisPage = () => {
       align: "center",
       headerAlign: "center",
       width: 183,
-      valueFormatter: (value) => value != null ? `${value.toLocaleString()}원` : '0원'
+      valueFormatter: (value) => value != null ? `${Number(value).toLocaleString()}원` : '0원'
     },
     { field: 'CATEGORY_CNT', headerName: '카테고리 합계', align: "center", headerAlign: "center", width: 183 },
   ];
@@ -194,15 +194,11 @@ const AnalysisPage = () => {
       width: 20,
       align: "center",
       headerAlign: "center",
-      renderCell: (params) => {
-        const rowIndex = params.api.getRowIndexRelativeToVisibleRows(params.id);
-        return rowIndex + 1;
-      }
     },
-    { field: 'MONTH', headerName: '일자(월)', width: 160, align: "center", headerAlign: "center" },
+    { field: 'DATE', headerName: '일자(월)', width: 160, align: "center", headerAlign: "center" },
     { field: 'SERVICE_NM', headerName: '서비스명', width: 160, align: "center", headerAlign: "center" },
     { field: 'CATEGORY', headerName: '카테고리', width: 160, align: "center", headerAlign: "center" },
-    { field: 'PRICE', headerName: '가격', width: 152, align: "center", headerAlign: "center", valueFormatter: (value) => `${value.toLocaleString()}` },
+    { field: 'PRICE', headerName: '가격', width: 152, align: "center", headerAlign: "center", valueFormatter: (value) => `${Number(value).toLocaleString()}` },
     { field: 'CURRENCY', headerName: '통화', width: 152, align: "center", headerAlign: "center" },
   ];
   /* --------------------------------------------------------------------------------
@@ -250,7 +246,7 @@ const AnalysisPage = () => {
               1년간 총 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {(avgResult?.payforyear ?? 0).toLocaleString()}원
+              {Number((avgResult?.payforyear ?? 0)).toLocaleString()}원
             </Typography>
           </Card>
           <Card sx={{ p: 3, borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.05)" }}>
@@ -258,7 +254,7 @@ const AnalysisPage = () => {
               월 평균 지출
             </Typography>
             <Typography variant="h4" fontWeight="bold">
-              {(avgResult?.avg ?? 0).toLocaleString()}원
+              {Number((avgResult?.avg ?? 0)).toLocaleString()}원
             </Typography>
           </Card>
       </Grid>
