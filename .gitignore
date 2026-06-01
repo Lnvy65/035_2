@@ -27,10 +27,10 @@ CREATE TABLE USERS (
 ./035-backend/node_modules
 ./035-backend/backend_start.bat
 
-./035-batch/main_3.6.py
-./035-batch/main_3.14.py
 ./035-batch/README.md
 ./035-batch/start.bat
+./035-batch/procedure_and_mail_sender.py
+./035-batch/exchange_api.py
 
 ./035-frontend/node_modules
 ./035-frontend/.env.production
