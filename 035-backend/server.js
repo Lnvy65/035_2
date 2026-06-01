@@ -1539,6 +1539,7 @@ app.post('/rest/main/selectsubchartdata', async (req, res) => {
             ) er
             ON ul.CURRENCY = er.CURRENCY
             WHERE ul.USER_ID = ?
+              AND ul.USE_YN = 'Y'  
               AND ul.CREATE_DT >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
             GROUP BY date
             ORDER BY date ASC
@@ -1599,6 +1600,7 @@ app.post('/rest/main/selectavg', async (req, res) => {
                 ) er
                 ON ul.CURRENCY = er.CURRENCY
                 WHERE ul.USER_ID = ?
+                  AND ul.USE_YN = 'Y'
                   AND ul.CREATE_DT >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR)
                 GROUP BY DATE_FORMAT(DATE(ul.CREATE_DT), '%Y-%m')
             ) t
@@ -1663,6 +1665,7 @@ app.post('/rest/main/selectcntcategorydata', async (req, res) => {
                     ) er
                 ON   ul.CURRENCY = er.CURRENCY
              WHERE   ul.USER_ID = ?
+                AND  ul.USE_YN = 'Y'
                AND   DATE_FORMAT(DATE(ul.CREATE_DT), '%Y-%m') = ?
           GROUP BY   DATE_FORMAT(DATE(ul.CREATE_DT), '%Y-%m')
                     ,ul.CATEGORY
@@ -1728,6 +1731,7 @@ app.post('/rest/main/selectCategoryDetail', async (req, res) => {
             WHERE ul.USER_ID = ?
               AND DATE_FORMAT(DATE(ul.CREATE_DT), '%Y-%m') = ?
               AND ul.CATEGORY = ?
+              AND  ul.USE_YN = 'Y'
         `;
 
         const [rows] = await db.execute(query, [
