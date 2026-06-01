@@ -4,11 +4,9 @@ import {
   TextField, Box, InputAdornment, Button, MenuItem 
 } from "@mui/material";
 import useAuthStore from "../store/authStore";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { selectcurnmApi } from "../api/mainpageApi";
 
-
-// 상수 데이터 분리
 const PRESET_SERVICES = [
   { name: "YouTube Premium", price: 14900, category: "OTT" },
   { name: "Netflix", price: 17000, category: "OTT" },
@@ -22,7 +20,7 @@ const CYCLES = [1, 3, 6, 12];
 
 const INITIAL_STATE = {
   SERVICE_NM: "",
-  MONTHLY_PRICE: "",
+  MONTHLY_PRICE: "", // 소수점 타이핑을 위해 문자열 상태 유지
   CUR_NM: "",
   ANCHOR_DAY: "",
   BILLING_CYCLE: "",
@@ -48,37 +46,39 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
       if (!isConfirmed) return;
     }
 
-    // const priceNum = String(form.MONTHLY_PRICE).replace(/,/g, "");
-    //임시 - 공유 사용자 수에 따른 가격 분할 로직 추가
+    // ⭐ 저장할 때 콤마를 제거하고 실수(Float) 숫자로 최종 변형합니다.
     const originalPrice = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
     const users = Number(form.SHARED_USERS) || 1;
-    const priceNum = Math.round(originalPrice / users);
+    
+    // 소수점이 유지될 수 있으므로 금액 계산 시 상황에 맞춰 반올림 혹은 소수점 유지 처리
+    const priceNum = originalPrice / users; 
 
     const { SHARED_USERS, ...saveData } = form;
 
-
     onSave({ 
       ...saveData, 
-      MONTHLY_PRICE: priceNum,
+      MONTHLY_PRICE: priceNum, // 숫자로 전달됨
       userId: userId
     });
     setForm(INITIAL_STATE);
-    // onSave({ 
-    //   ...form, 
-    //   MONTHLY_PRICE: priceNum, 
-    //   userId: userId
-    // });
-    // setForm(INITIAL_STATE);
   };
 
   // 입력 핸들러 공통화
   const handleChange = (field) => (e) => {
     let value = e.target.value;
+    
     if (field === 'MONTHLY_PRICE') {
-      const rawValue = value.replace(/[^0-9]/g, "");
-      value = rawValue ? Number(rawValue).toLocaleString() : "";
+      // ⭐ 1. 숫자와 마침표(.)를 제외한 모든 문자 제거
+      let cleaned = value.replace(/[^0-9.]/g, "");
+      
+      // ⭐ 2. 마침표가 여러 개 입력되는 것을 방지 (첫 번째 마침표만 유효)
+      const parts = cleaned.split(".");
+      if (parts.length > 2) {
+        cleaned = parts[0] + "." + parts.slice(1).join("");
+      }
+      
+      value = cleaned;
     } 
-    // 공유 사용자 수는 최소 1명으로 제한
     else if (field === 'SHARED_USERS') {
       value = Math.max(1, Number(value));
     }
@@ -88,7 +88,8 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
   const getCalculatedPrice = () => {
     const price = Number(String(form.MONTHLY_PRICE).replace(/,/g, ""));
     const users = Number(form.SHARED_USERS) || 1;
-    return price > 0 && users > 1 ? Math.floor(price / users).toLocaleString() : "";
+    // 결과 출력 시 소수점이 있다면 둘째 자리까지 표기하거나 포맷팅
+    return price > 0 && users > 1 ? (price / users).toLocaleString(undefined, { maximumFractionDigits: 2 }) : "";
   };
 
   const { data: curNMData = [], isLoading: iscurNMLoading, refetch: refetchCurNM } = useQuery({
@@ -99,7 +100,7 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
     staleTime: 0,
   });
 
-   const currencies = Array.isArray(curNMData) ? curNMData : [];
+  const currencies = Array.isArray(curNMData) ? curNMData : [];
 
   return (
     <Dialog open={open} onClose={handleClose} fullWidth maxWidth="xs">
@@ -115,7 +116,7 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
                 setForm({
                   ...form,
                   SERVICE_NM: selected.name,
-                  MONTHLY_PRICE: selected.price.toLocaleString(),
+                  MONTHLY_PRICE: selected.price.toString(), // 문자열로 동기화
                   CATEGORY: selected.category
                 });
               }
@@ -125,16 +126,18 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
           </TextField>
 
           <TextField label="서비스 이름" fullWidth value={form.SERVICE_NM} onChange={handleChange('SERVICE_NM')} />
+          
+          {/* 월 구독료 인풋 필드 */}
           <TextField 
             label="월 구독료" 
             fullWidth 
             value={form.MONTHLY_PRICE} 
             onChange={handleChange('MONTHLY_PRICE')}
-            InputProps={{ endAdornment: <InputAdornment position="end"></InputAdornment> }} 
+            placeholder="0.00"
           />
           
           <TextField
-            select // 드롭다운 형식으로 변환
+            select
             label="통화"
             fullWidth
             value={form.CUR_NM}
@@ -143,8 +146,8 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
               MenuProps: {
                 PaperProps: {
                   style: {
-                    maxHeight: 300, // ✅ 최대 높이를 300px로 제한 (스크롤 생성)
-                    width: 250,     // ✅ 너비 고정
+                    maxHeight: 300,
+                    width: 250,
                   },
                 },
               },
@@ -163,7 +166,7 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
             fullWidth 
             value={form.SHARED_USERS} 
             onChange={handleChange('SHARED_USERS')}
-            helperText={getCalculatedPrice() ? `1인당 청구 금액: ${getCalculatedPrice()}원` : "나 혼자 사용하는 경우 1을 입력하세요."}
+            helperText={getCalculatedPrice() ? `1인당 청구 금액: ${getCalculatedPrice()}` : "나 혼자 사용하는 경우 1을 입력하세요."}
             inputProps={{ min: 1 }}
           />
 
@@ -177,8 +180,8 @@ const CreateSubModal = ({ open, onClose, onSave, isLoading, existingSubscription
               MenuProps: {
                 PaperProps: {
                   style: {
-                    maxHeight: 300, // ✅ 최대 높이를 300px로 제한 (스크롤 생성)
-                    width: 250,     // ✅ 너비 고정
+                    maxHeight: 300,
+                    width: 250,
                   },
                 },
               },

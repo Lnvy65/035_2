@@ -8,7 +8,6 @@ import { TextField, InputAdornment, Button } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
-
 import { generateColors } from "../utils/constants";
 import { useSubColumns } from "../hooks/useSubColumn";
 import CreateSubModal from "../components/CreateSubModal";
@@ -51,7 +50,7 @@ const MainPage = () => {
       refetchOnMount: false,
       staleTime: 0,
   });
-  const totalSumResult = sumData?.result?.[0] || { sum: 0, count: 0 };
+  const totalSumResult = sumData?.result || { sum: 0, count: 0 };
 
   const { data: monthlySumResultsumData, isLoading: isMonthlySumLoading } = useQuery({
   queryKey: QUERY_KEYS.monthlySum(userId),
@@ -61,7 +60,7 @@ const MainPage = () => {
   refetchOnMount: false,
   staleTime: 0,
   });
-  const monthlySumResult = monthlySumResultsumData?.result?.[0] || { sum: 0, count: 0 };
+  const monthlySumResult = monthlySumResultsumData?.result || { sum: 0, count: 0 };
 
   const { data: dateData, isLoading: isdateLoading } = useQuery({
     queryKey: QUERY_KEYS.date(userId),
@@ -74,7 +73,7 @@ const MainPage = () => {
   const dateresult = dateData?.result?.[0] || { NEXT_BILLING_DT: 0, SERVICE_NM: 0 };
 
   // 1. 외화 리스트 (기본 모드)
-  const { data: subListData = [], isLoading: issubListLoading } = useQuery({
+  const { data: subListData = [], isLoading: issubListLoading, refetch: refetchSubList } = useQuery({
     queryKey: QUERY_KEYS.list(userId),
     queryFn: () => selectsublistApi({ userId }),
     // KRW 모드가 아닐 때만 호출 (!!userId는 로그인이 되어있을 때라는 기본 조건)
@@ -85,7 +84,7 @@ const MainPage = () => {
   });
 
   // 2. 원화 환산 리스트 (원화 모드)
-  const { data: subKRListData = [], isLoading: issubKRListLoading } = useQuery({
+  const { data: subKRListData = [], isLoading: issubKRListLoading, refetch: refetchKRSubList } = useQuery({
     // [중요] 키가 중복되지 않게 'krw' 추가
     queryKey: [...QUERY_KEYS.list(userId), "krw"], 
     queryFn: () => selectsubkrlistApi({ userId }),
@@ -95,6 +94,20 @@ const MainPage = () => {
     refetchOnMount: false,
     staleTime: 0,
   });
+
+  // 상단 카드 데이터, 차트, 그리고 현재 켜져 있는 모드의 리스트까지 통째로 DB 재요청
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.sum(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.monthlySum(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.date(userId) });
+    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.chart(userId) });
+    
+    if (isKrwMode) {
+      refetchKRSubList();
+    } else {
+      refetchSubList();
+    }
+  };
 
   const { data: subchartData, isLoading: issubchartLoading } = useQuery({
     queryKey: QUERY_KEYS.chart(userId),
@@ -201,15 +214,15 @@ const MainPage = () => {
       <div className={styles.summarySection}>
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>활성화된 {monthNameKR} 구독 금액</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{monthlySumResult.sum?.toLocaleString() || 0}원</p>
+          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{Number(monthlySumResult.sum)?.toLocaleString() || 0}원</p>
         </div>
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>활성화된 총 구독 금액</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{totalSumResult.sum?.toLocaleString() || 0}원</p>
+          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{Number(totalSumResult.sum)?.toLocaleString() || 0}원</p>
         </div>
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>활성화된 구독 수</p>
-          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{totalSumResult.count || 0}개</p>
+          <p style={{fontSize: '24px', fontWeight: 'bold', marginTop: '8px'}}>{Number(totalSumResult.count)?.toLocaleString() || 0}개</p>
         </div>
         <div className={`${styles.card} ${styles.summaryCard}`}>
           <p style={{color: '#817d7d'}}>다음 결제 예정</p>
@@ -238,24 +251,49 @@ const MainPage = () => {
               >
                 {isKrwMode ? "외화 결제액으로 보기" : "원화 환산액으로 보기"}
               </Button>
-              <Button variant="outlined" size="small" onClick={() => refetchSubList()} sx={{ borderRadius: '8px', height: '36px', textTransform: 'none', borderColor: '#e5e7eb', color: '#666', minWidth: '80px' }}>새로고침</Button>
-              <button className={styles.addButton} onClick={() => setOpenCreate(true)}><span style={{ marginRight: '4px' }}>+</span> 추가</button>
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={handleRefresh} // 👈 () => handleRefresh 에서 handleRefresh 로 직접 변경!
+                disabled={isLoading}    // 👈 데이터 조회 중일 때는 버튼을 잠시 비활성화 (중복 호출 방지)
+                sx={{ 
+                  borderRadius: '8px', 
+                  height: '36px', 
+                  textTransform: 'none', 
+                  borderColor: '#e5e7eb', 
+                  color: '#666', 
+                  minWidth: '80px' 
+                }}
+              >
+                {isLoading ? "조회 중..." : "새로고침"}
+              </Button>
+              <button 
+                className={styles.addButton}
+                onClick={() => setOpenCreate(true)}
+              >
+                <span style={{ marginRight: '4px' }}>+</span> 추가
+              </button>
 
-              <CreateSubModal 
-                open={openCreate} 
-                onClose={() => setOpenCreate(false)} 
-                onSave={(data) => createMutation.mutate(data)}
-                isLoading={createMutation.isPending}
-                existingSubscriptions={subListData}
-              />
-              
-              <EditSubModal 
-                open={openEdit} 
-                editData={editData}
-                onClose={handleCloseEdit} 
-                onSave={(data) => updateMutation.mutate({ ...data, userId })}
-                isLoading={updateMutation.isPending}
-              />
+              {/* 수정한 JSX 구조 */}
+              {openCreate && (
+                <CreateSubModal
+                  open={openCreate}
+                  onClose={() => setOpenCreate(false)}
+                  onSave={(data) => createMutation.mutate(data)}
+                  isLoading={createMutation.isPending}
+                  existingSubscriptions={subListData}
+                />
+              )}
+
+              {openEdit && editData && (
+                <EditSubModal 
+                  open={openEdit}
+                  editData={editData}
+                  onClose={handleCloseEdit}
+                  onSave={(data) => updateMutation.mutate({ ...data, userId })}
+                  isLoading={updateMutation.isPending}
+                />
+              )}
             </div>
           </div>
           
@@ -272,7 +310,7 @@ const MainPage = () => {
           </div>
         </div>
 
-        <div className={styles.sidebar}>
+        <div className={`${styles.sidebar}`}>
           <div className={`${styles.card} ${styles.chartCard}`}>
             <h4>활성화된 구독 지출 분포</h4>
             <div style={{ height: '250px', marginTop: '20px' }}>
